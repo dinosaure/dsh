@@ -30,6 +30,10 @@ let to_string_of_file (a, b) filename =
   close_in fd; cc
 
 let to_string (a, b) =
-  if a.lnum = b.lnum
-  then Printf.sprintf "l.%d" a.lnum
-  else Printf.sprintf "l.%d - %d" a.lnum b.lnum
+  let print_aux ty () (a, b) =
+    if a = b then Printf.sprintf "%s%d" ty a
+    else Printf.sprintf "%s%d - %d" ty a b
+  in
+  Printf.sprintf "%a %a"
+    (print_aux "l.") (a.lnum, b.lnum)
+    (print_aux "c.") (a.cnum, b.cnum)
