@@ -1,0 +1,9 @@
+S src
+S bin
+S test
+
+B _build/src
+B _build/bin
+B _build/test
+
+PKG oUnit
