@@ -13,6 +13,7 @@ let tests =
      OK [LPAR; RPAR; RPAR; LAMBDA; NAME "let_"; NAME "_1Ma"]);
     ("lambda let forall", OK [LAMBDA; LET; FORALL]);
     ("λ", Fail);
+    ("x$", Fail);
   ]
 
 module String = struct
