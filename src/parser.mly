@@ -62,17 +62,17 @@ single_forall:
 
 expr:
   | LPAR LET LPAR n = NAME e = expr RPAR c = expr RPAR
-  { Ast.Let (n, e, c) }
+  { Ast.Let (Location.make $startpos $endpos, n, e, c) }
   | LPAR LAMBDA l = slist(NAME) e = expr RPAR
-  { Ast.Abs (l, e) }
+  { Ast.Abs (Location.make $startpos $endpos, l, e) }
   | n = NAME
-  { Ast.Var n }
+  { Ast.Var (Location.make $startpos $endpos, n) }
   | LPAR e = expr RPAR
   { e }
   | LPAR f = expr a = expr+ RPAR
-  { Ast.App (f, a) }
+  { Ast.App (Location.make $startpos $endpos, f, a) }
   | LBRA a = expr o = expr b = expr RBRA
-  { Ast.App (o, [a; b]) }
+  { Ast.App (Location.make $startpos $endpos, o, [a; b]) }
 
 ty:
   | n = NAME

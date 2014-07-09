@@ -8,6 +8,10 @@ let make start_pos end_pos =
       seek = pos.Lexing.pos_cnum; }
   in (get_pos start_pos, get_pos end_pos)
 
+let dummy =
+  ({ lnum = 0; cnum = 0; seek = 0 },
+   { lnum = 0; cnum = 0; seek = 0 })
+
 let catch_str ?(hidden=['\n'; '\t']) start stop in_ch =
   let buffer = Buffer.create 16 in
   let rec aux = function

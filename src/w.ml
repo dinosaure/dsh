@@ -146,12 +146,12 @@ let rec compute_function n = function
   | _ as ty -> raise (Expected_function ty)
 
 let rec eval env level = function
-  | Ast.Var name ->
+  | Ast.Var (_, name) ->
     begin
       try specialization level (Environment.lookup env name)
       with Not_found -> raise (Unbound_variable name)
     end
-  | Ast.Abs (a, c) ->
+  | Ast.Abs (_, a, c) ->
     let a' = List.map (fun _ -> Variable.make level) a in
     let env' =
       List.fold_left2
@@ -159,11 +159,11 @@ let rec eval env level = function
         env a a' in
     let c' = eval env' level c in
     Type.Arrow (a', c')
-  | Ast.App (f, a) ->
+  | Ast.App (_, f, a) ->
     let a', r' = compute_function (List.length a) (eval env level f) in
     List.iter2 (fun ty a -> unification ty (eval env level a)) a' a;
     r'
-  | Ast.Let (n, e, c) ->
+  | Ast.Let (_, n, e, c) ->
     let e' = eval env (level + 1) e in
     let ty = generalization level e' in
     eval (Environment.extend env n ty) level c

@@ -1,11 +1,31 @@
 open OUnit2
 
+module Ast_without_loc = struct
+  type t =
+    | Var of string
+    | App of (t * t list)
+    | Abs of (string list * t)
+    | Let of (string * t * t)
+
+  let rec to_ast = function
+    | Var name -> Ast.Var (Location.dummy, name)
+    | App (f, a) -> Ast.App (Location.dummy, to_ast f, List.map to_ast a)
+    | Abs (a, r) -> Ast.Abs (Location.dummy, a, to_ast r)
+    | Let (name, e, c) -> Ast.Let (Location.dummy, name, to_ast e, to_ast c)
+
+  let rec of_ast = function
+    | Ast.Var (_, name) -> Var name
+    | Ast.App (_, f, a) -> App (of_ast f, List.map of_ast a)
+    | Ast.Abs (_, a, r) -> Abs (a, of_ast r)
+    | Ast.Let (_, name, e, c) -> Let (name, of_ast e, of_ast c)
+end
+
 type t =
-  | OK of Ast.t
+  | OK of Ast_without_loc.t
   | Fail
 
 let tests =
-  let open Ast in
+  let open Ast_without_loc in
   [
     ("", Fail);
     ("x", OK (Var "x"));
@@ -26,12 +46,14 @@ let tests =
 
 let to_string = function
   | Fail -> "Fail"
-  | OK a -> ("OK: " ^ (Ast.to_string a))
+  | OK a -> ("OK: " ^ (Ast_without_loc.to_ast a
+                       |> Ast.to_string))
 
 let make_test (expr, result) =
   String.escaped expr >:: fun _ ->
     let re =
-      try OK (Parser.single_expr Lexer.token (Lexing.from_string expr))
+      try OK (Parser.single_expr Lexer.token (Lexing.from_string expr)
+              |> Ast_without_loc.of_ast)
       with Parser.Error -> Fail
     in
     assert_equal ~printer:to_string re result

@@ -1,8 +1,8 @@
 type t =
-  | Var of string
-  | App of t * t list
-  | Abs of string list * t
-  | Let of string * t * t
+  | Var of (Location.t * string)
+  | App of (Location.t * t * t list)
+  | Abs of (Location.t * string list * t)
+  | Let of (Location.t * string * t * t)
 
 module Buffer = struct
   include Buffer
@@ -19,16 +19,16 @@ end
 let to_string tree =
   let buffer = Buffer.create 16 in
   let rec compute buffer = function
-    | Var name -> Buffer.add_string buffer name
-    | App (f, a) ->
+    | Var (_, name) -> Buffer.add_string buffer name
+    | App (_, f, a) ->
       Printf.bprintf buffer "(%a %a)"
         compute f
         (Buffer.add_list ~sep:" " compute) a
-    | Abs (a, c) ->
+    | Abs (_, a, c) ->
       Printf.bprintf buffer "(lambda (%a) %a)"
         (Buffer.add_list ~sep:", " Buffer.add_string) a
         compute c
-    | Let (name, e, c) ->
+    | Let (_, name, e, c) ->
       Printf.bprintf buffer "(let (%s %a) %a)"
         name
         compute e
