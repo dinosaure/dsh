@@ -8,6 +8,4 @@ and var =
   | Link of t
   | Generic of int
 
-
-
 val to_string : t -> string

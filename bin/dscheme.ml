@@ -1,7 +1,7 @@
 let () =
   let a = Parser.single_expr
       Lexer.token
-      (Lexing.from_string "(fst [one, true])")
+      (Lexing.from_string "(lambda (x) x)")
   in
   let t = W.eval Core.core 0 a in
   let t = W.generalization (-1) t in

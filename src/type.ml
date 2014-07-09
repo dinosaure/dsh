@@ -51,16 +51,21 @@ let to_string ty =
          ^ (if i >= 26 then (string_of_int (i / 26)) else "")
        in name)
   in
-  let rec compute buffer = function
+  let rec compute ?(in_left = false) ?(level = 0) buffer = function
     | Const name -> Buffer.add_string buffer name
     | App (f, a) ->
       Printf.bprintf buffer "(%a %a)"
-        compute f
+        (compute ~in_left ~level) f
         (Buffer.add_list ~sep:" " compute) a
     | Arrow (a, r) ->
-      Printf.bprintf buffer "(%a -> %a)"
-        (Buffer.add_list ~sep:" -> " compute) a
-        compute r
+      Printf.bprintf buffer "%s%a -> %a%s"
+        (if in_left || level = 0 then "(" else "")
+        (Buffer.add_list ~sep:" -> "
+           (compute
+              ~in_left:(List.length a = 1)
+              ~level:(level + 1))) a
+        (compute ~in_left ~level:(level + 1)) r
+        (if in_left || level = 0 then ")" else "")
     | Var { contents = Generic id } ->
       let name =
         try Hashtbl.find map id
@@ -68,7 +73,7 @@ let to_string ty =
       in Buffer.add_string buffer name
     | Var { contents = Unbound (id, _) } ->
       Buffer.add_string buffer ("_" ^ (string_of_int id))
-    | Var { contents = Link t } -> compute buffer t
+    | Var { contents = Link t } -> compute ~in_left ~level buffer t
   in compute buffer ty;
   if Hashtbl.length map > 0
   then
