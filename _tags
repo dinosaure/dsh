@@ -1,0 +1,34 @@
+# OASIS_START
+# DO NOT EDIT (digest: b3eb85f8ec159155fcd89e4477470ea7)
+# Ignore VCS directories, you can use the same kind of rule outside
+# OASIS_START/STOP if you want to exclude directories that contains
+# useless stuff for the build process
+<**/.svn>: -traverse
+<**/.svn>: not_hygienic
+".bzr": -traverse
+".bzr": not_hygienic
+".hg": -traverse
+".hg": not_hygienic
+".git": -traverse
+".git": not_hygienic
+"_darcs": -traverse
+"_darcs": not_hygienic
+# Library dscheme
+"src/dscheme.cmxs": use_dscheme
+# Executable dscheme
+"bin/dscheme.byte": use_dscheme
+<bin/*.ml{,i}>: use_dscheme
+# Executable test_parser
+<test/parser_test.{native,byte}>: pkg_oUnit
+<test/parser_test.{native,byte}>: use_dscheme
+# Executable test_lexer
+<test/lexer_test.{native,byte}>: pkg_oUnit
+<test/lexer_test.{native,byte}>: use_dscheme
+# Executable test_w
+<test/w_test.{native,byte}>: pkg_oUnit
+<test/w_test.{native,byte}>: use_dscheme
+<test/*.ml{,i}>: pkg_oUnit
+<test/*.ml{,i}>: use_dscheme
+# OASIS_STOP
+
+true: use_menhir

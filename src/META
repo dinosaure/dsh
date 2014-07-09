@@ -1,0 +1,11 @@
+# OASIS_START
+# DO NOT EDIT (digest: 408e05662c5ba8cbda6da5f300406625)
+version = "0.1"
+description = "Typed Scheme"
+archive(byte) = "dscheme.cma"
+archive(byte, plugin) = "dscheme.cma"
+archive(native) = "dscheme.cmxa"
+archive(native, plugin) = "dscheme.cmxs"
+exists_if = "dscheme.cma"
+# OASIS_STOP
+

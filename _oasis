@@ -1,0 +1,61 @@
+OASISFormat:             0.4
+Name:                    dscheme
+Version:                 0.1
+Synopsis:                Typed Scheme
+Authors:                 Romain Calascibetta
+License:                 MIT
+Plugins:                 META (0.4), DevFiles (0.4)
+BuildTools:              ocamlbuild
+
+Library dscheme
+  Path:                  src
+  Modules:               Location, Lexer, Parser, Ast, Type, W, Core
+
+Executable dscheme
+  Path:                  bin
+  MainIs:                dscheme.ml
+  BuildDepends:          dscheme
+
+## Test ##
+
+Executable test_parser
+  Path:                  test
+  Build$:                flag(tests)
+  Install:               false
+  CompiledObject:        best
+  MainIs:                parser_test.ml
+  BuildDepends:          dscheme, oUnit
+
+Test test_parser
+  Run$:                  flag(tests)
+  TestTools:             test_parser
+  Command:               $test_parser
+  WorkingDirectory:      .
+
+Executable test_lexer
+  Path:                  test
+  Build$:                flag(tests)
+  Install:               false
+  CompiledObject:        best
+  MainIs:                lexer_test.ml
+  BuildDepends:          dscheme, oUnit
+
+Test test_lexer
+  Run$:                  flag(tests)
+  TestTools:             test_lexer
+  Command:               $test_lexer
+  WorkingDirectory:      .
+
+Executable test_w
+  Path:                  test
+  Build$:                flag(tests)
+  Install:               false
+  CompiledObject:        best
+  MainIs:                w_test.ml
+  BuildDepends:          dscheme, oUnit
+
+Test test_w
+  Run$:                  flag(tests)
+  TestTools:             test_w
+  Command:               $test_w
+  WorkingDirectory:      .
