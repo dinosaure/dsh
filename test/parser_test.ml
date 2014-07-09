@@ -28,10 +28,15 @@ let tests =
   let open Ast_without_loc in
   [
     ("", Fail);
+    ("(", Fail);
+    (")", Fail);
+    ("())", Fail);
     ("x", OK (Var "x"));
     ("(lambda (x) x)", OK (Abs (["x"], Var "x")));
+    ("(lambda x x)", Fail);
     ("(f x y)", OK (App (Var "f", [Var "x"; Var "y"])));
     ("((f x) y)", OK (App (App (Var "f", [Var "x"]), [Var "y"])));
+    ("(f x) y", Fail);
     ("(let (f (lambda (x y) (g x y))) (f a b))",
      OK (Let ("f", Abs (["x"; "y"], App (Var "g", [Var "x"; Var "y"])),
               App (Var "f", [Var "a"; Var "b"]))));
@@ -41,7 +46,11 @@ let tests =
                     App (Var "f", [Var "x"; Var "y"]))))));
     ("f x", Fail);
     ("(let (a one))", Fail);
-    ("()", Fail)
+    ("((let) (a one) a)", Fail);
+    ("(let (a one) a)",
+     OK (Let ("a", Var "one", Var "a")));
+    ("()", Fail);
+    ("(id x))", Fail)
   ]
 
 let to_string = function
