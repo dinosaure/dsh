@@ -62,9 +62,9 @@ let to_string ty =
         (if in_left || level = 0 then "(" else "")
         (Buffer.add_list ~sep:" -> "
            (compute
-              ~in_left:(List.length a = 1)
+              ~in_left:(List.length a >= 1)
               ~level:(level + 1))) a
-        (compute ~in_left ~level:(level + 1)) r
+        (compute ~in_left:false ~level:(level + 1)) r
         (if in_left || level = 0 then ")" else "")
     | Var { contents = Generic id } ->
       let name =

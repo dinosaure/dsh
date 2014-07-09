@@ -79,7 +79,28 @@ let tests =
      OK ("(forall (a b) (((a -> a) -> b) -> b))"));
     ("(lambda (x) (lambda (y) (let (x (x y)) (x y))))",
      OK ("(forall (a b) ((a -> a -> b) -> a -> b))"));
-    (* bug in pretty-printer of type *)
+    ("(lambda (x) (let (y (lambda (z) (x z))) y))",
+     OK ("(forall (a b) ((a -> b) -> a -> b))"));
+    ("(lambda (x) (let (y (lambda (z) x)) y))",
+     OK ("(forall (a b) (a -> b -> a))"));
+    ("(lambda (x) (lambda (y) (let (x (x y)) (lambda (x) (y x)))))",
+     OK ("(forall (a b c) (((a -> b) -> c) -> (a -> b) -> a -> b))"));
+    ("(lambda (x) (let (y x) (y y)))",
+     Fail (W.Recursive_type (Type.Arrow ([ Variable.dummy ], Variable.dummy))));
+    ("(lambda (x) (let (y (lambda (z) z)) (y y)))",
+     OK ("(forall (a b) (a -> b -> b))"));
+    ("(lambda (x) (x x))",
+     Fail (W.Recursive_type (Type.Arrow ([ Variable.dummy ], Variable.dummy))));
+    ("(one id)",
+     Fail (W.Expected_function (Type.Const "int")));
+    ("(lambda (f) (let (x (lambda (g y) (let (_ (g y)) (= f g)))) x))",
+     OK ("(forall (a b) ((a -> b) -> (a -> b) -> a -> bool))"));
+    ("(let (const (lambda (x) (lambda (y) x))) const)",
+     OK ("(forall (a b) (a -> b -> a))"));
+    ("(let (|> (lambda (f x) (f x))) |>)",
+     OK ("(forall (a b) ((a -> b) -> a -> b))"));
+    ("(let (apply (lambda (f) (lambda (x) (f x)))) apply)",
+     OK ("(forall (a b) ((a -> b) -> a -> b))"));
   ]
 
 let to_string = function
