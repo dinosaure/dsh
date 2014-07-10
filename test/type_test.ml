@@ -24,10 +24,9 @@ module Type = struct
       && compare r1 r2
     | Var { contents = Link t1}, Var { contents = Link t2 } -> compare t1 t2
     | Var { contents = Generic id1}, Var { contents = Generic id2 } -> id1 = id2
-    | Var { contents = Unbound _ }, Const _ -> true
     | _, ty when ty = Variable.dummy -> true
     | ty, _ when ty = Variable.dummy -> true
-    | _, _ -> false
+    | _, _ -> t1 = t2
 end
 
 let tests =
@@ -104,6 +103,11 @@ let tests =
      OK ("(forall (a b) ((a -> b) -> a -> b))"));
     ("(let (apply (lambda (f) (lambda (x) (f x)))) apply)",
      OK ("(forall (a b) ((a -> b) -> a -> b))"));
+    ("ids", OK "(list (forall (a) (a -> a)))");
+    ("(lambda (f) [(f one), (f true)])",
+     Fail (Synthesis.Conflict (Type.Const "int", Type.Const "bool")));
+    ("(lambda (f : (forall (a) (a -> a))) [(f true), (f one)])",
+     OK ("(((forall (a) (a -> a))) -> (pair bool int))"));
   ]
 
 let to_string = function
