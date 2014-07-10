@@ -78,7 +78,8 @@ let string_of_exn = function
     ("unbound variable: " ^ name)
   | Variable_no_instantiated -> "Variable no instantiated"
   | exn ->
-    raise (Invalid_argument ("W.string_of_exn: " ^ (Printexc.to_string exn)))
+    raise (Invalid_argument ("Synthesis.string_of_exn: "
+                             ^ (Printexc.to_string exn)))
 
 let compute_variable id level ty =
   let rec aux = function

@@ -1,11 +1,12 @@
 let add expr env =
   let expr = Parser.single_expr Lexer.token (Lexing.from_string expr) in
   match expr with
-  | Ast.Ann (_, Ast.Var (_, name), ([], ty)) -> W.Environment.add name ty env
+  | Ast.Ann (_, Ast.Var (_, name), ([], ty)) ->
+    Synthesis.Environment.add name ty env
   | _ -> raise (Invalid_argument "Core.add")
 
 let core =
-  W.Environment.empty
+  Synthesis.Environment.empty
   |> add "id          : (forall (a) (a -> a))"
   |> add "one         : int"
   |> add "zero        : int"

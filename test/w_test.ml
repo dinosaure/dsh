@@ -5,7 +5,7 @@ type t =
   | Fail of exn
 
 module Variable = struct
-  include W.Variable
+  include Synthesis.Variable
 
   let dummy = Type.Var (ref (Type.Unbound (-1, -1)))
 end
@@ -34,8 +34,8 @@ let tests =
   [
     ("id", OK ("(forall (a) (a -> a))"));
     ("one", OK ("int"));
-    ("x", Fail (W.Unbound_variable "x"));
-    ("(let (x x) x)", Fail (W.Unbound_variable "x"));
+    ("x", Fail (Synthesis.Unbound_variable "x"));
+    ("(let (x x) x)", Fail (Synthesis.Unbound_variable "x"));
     ("(let (x id) x)", OK ("(forall (a) (a -> a))"));
     ("(let (x (lambda (y) y)) x)", OK ("(forall (a) (a -> a))"));
     ("(lambda (x) x)", OK ("(forall (a) (a -> a))"));
@@ -47,7 +47,7 @@ let tests =
     ("(let (f (lambda (x) x)) (let (id (lambda (y) y)) (= f id)))",
      OK ("bool"));
     ("(let (f (lambda (x) x)) (= f =))",
-     Fail (W.Conflict
+     Fail (Synthesis.Conflict
              (Type.Arrow ([ Variable.dummy ], Variable.dummy),
               (Type.Arrow ([ Variable.dummy; Variable.dummy ],
                            Type.Const "bool")))));
@@ -58,7 +58,7 @@ let tests =
     ("(let (f (lambda (x) x)) [(f one), (f true)])",
      OK ("(pair int bool)"));
     ("(lambda (f) [(f one), (f true)])",
-     Fail (W.Conflict (Type.Const "int", Type.Const "bool")));
+     Fail (Synthesis.Conflict (Type.Const "int", Type.Const "bool")));
     ("(let (f (lambda (x y) (let (a (= x y)) [x = y]))) f)",
      OK ("(forall (a) (a -> a -> bool))"));
     ("(id id)", OK ("(forall (a) (a -> a))"));
@@ -69,9 +69,10 @@ let tests =
     ("(cons id nill)", OK ("(forall (a) (list (a -> a)))"));
     ("(let (l1 (cons id nill)) (let (l2 (cons succ nill)) l2))",
      OK ("(list (int -> int))"));
-    ("[one + true]", Fail (W.Conflict (Type.Const "int", Type.Const "bool")));
+    ("[one + true]",
+     Fail (Synthesis.Conflict (Type.Const "int", Type.Const "bool")));
     ("(+ one)",
-     Fail (W.Expected_argument
+     Fail (Synthesis.Expected_argument
              (Type.Arrow ([Type.Const "int"; Type.Const "int"],
                           Type.Const "int"), 1)));
     ("(lambda (x) (let (y x) x))", OK ("(forall (a) (a -> a))"));
@@ -86,13 +87,15 @@ let tests =
     ("(lambda (x) (lambda (y) (let (x (x y)) (lambda (x) (y x)))))",
      OK ("(forall (a b c) (((a -> b) -> c) -> (a -> b) -> a -> b))"));
     ("(lambda (x) (let (y x) (y y)))",
-     Fail (W.Recursive_type (Type.Arrow ([ Variable.dummy ], Variable.dummy))));
+     Fail (Synthesis.Recursive_type
+             (Type.Arrow ([ Variable.dummy ], Variable.dummy))));
     ("(lambda (x) (let (y (lambda (z) z)) (y y)))",
      OK ("(forall (a b) (a -> b -> b))"));
     ("(lambda (x) (x x))",
-     Fail (W.Recursive_type (Type.Arrow ([ Variable.dummy ], Variable.dummy))));
+     Fail (Synthesis.Recursive_type
+             (Type.Arrow ([ Variable.dummy ], Variable.dummy))));
     ("(one id)",
-     Fail (W.Expected_function (Type.Const "int")));
+     Fail (Synthesis.Expected_function (Type.Const "int")));
     ("(lambda (f) (let (x (lambda (g y) (let (_ (g y)) (= f g)))) x))",
      OK ("(forall (a b) ((a -> b) -> (a -> b) -> a -> bool))"));
     ("(let (const (lambda (x) (lambda (y) x))) const)",
@@ -104,14 +107,14 @@ let tests =
   ]
 
 let to_string = function
-  | Fail e -> "Fail: " ^ (W.string_of_exn e)
+  | Fail e -> "Fail: " ^ (Synthesis.string_of_exn e)
   | OK ty -> "OK: " ^ ty
 
 let normalize ty =
   Type.to_string (Parser.single_ty Lexer.token (Lexing.from_string ty))
 
 let compare r1 r2 =
-  let open W in
+  let open Synthesis in
   match r1, r2 with
   | OK ty1, OK ty2 -> (normalize ty1) = (normalize ty2)
   | Fail (Recursive_type a), Fail (Recursive_type b) -> Type.compare a b
@@ -129,15 +132,15 @@ let compare r1 r2 =
 let make_test (expr, result) =
   String.escaped expr >:: fun _ ->
     let re =
-      try W.Variable.reset ();
-        let ty = W.eval Core.core 0
+      try Synthesis.Variable.reset ();
+        let ty = Synthesis.eval Core.core 0
             (Parser.single_expr Lexer.token (Lexing.from_string expr)) in
-        let ty' = W.generalization (-1) ty in
+        let ty' = Synthesis.generalization (-1) ty in
         OK (Type.to_string ty')
       with exn -> Fail exn
     in
     assert_equal ~printer:to_string ~cmp:compare re result
 
-let suite = "W test" >::: List.map make_test tests
+let suite = "Synthesis test" >::: List.map make_test tests
 
 let () = run_test_tt_main suite

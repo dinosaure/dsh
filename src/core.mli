@@ -1,1 +1,1 @@
-val core : Type.t W.Environment.t
+val core : Type.t Synthesis.Environment.t
