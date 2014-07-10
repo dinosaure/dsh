@@ -19,9 +19,13 @@ let replace ids ty =
       end
     | Var _ as ty -> ty
     | App (f, a) ->
-      App (aux f, List.map aux a)
+      let f' = aux f in
+      let a' = List.map aux a in
+      App (f', a')
     | Arrow (a, r) ->
-      Arrow (List.map aux a, aux r)
+      let a' = List.map aux a in
+      let r' = aux r in
+      Arrow (a', r')
     | Forall (ids, ty) ->
       Forall (ids, aux ty)
   in (List.rev !lst, aux ty)

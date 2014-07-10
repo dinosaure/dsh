@@ -19,8 +19,11 @@ let core =
   |> add "false       : bool"
   |> add "not         : (bool -> bool)"
   |> add "choose      : (forall (a) (a -> a -> a))"
-  |> add "apply       : (forall (a b) ((a -> b) -> b -> b))"
+  |> add "apply       : (forall (a b) ((a -> b) -> a -> b))"
+
   |> add "head        : (forall (a) ((list a) -> a))"
   |> add "tail        : (forall (a) ((list a) -> (list a)))"
   |> add "nill        : (forall (a) (list a))"
   |> add "cons        : (forall (a) (a -> (list a) -> (list a)))"
+  |> add "single      : (forall (a) (a -> (list a)))"
+  |> add "map         : (forall (a b) ((a -> b) -> (list a) -> (list b)))"

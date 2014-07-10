@@ -35,19 +35,20 @@ module String = struct
 end
 
 module Map = struct
-  include Map.Make (struct type t= int let compare = compare end)
+  include Map.Make (struct type t = int let compare = compare end)
 
   let generate i =
     (String.make 1 (char_of_int (int_of_char 'a' + (i mod 26))))
     ^ (if i >= 26 then (string_of_int (i / 26)) else "")
 
-  let extend env lst =
-    let rec aux (acc, env) = function
-      | [] -> (List.rev acc, env)
-      | x :: r ->
-        let name = generate (cardinal env) in
-        aux (name :: acc, add x name env) r
-    in aux ([], env) lst
+  let extend env ids =
+    let lst, env = List.fold_left
+        (fun (lst, env) id ->
+           let name = generate (cardinal env) in
+           (name :: lst, add id name env))
+        ([], env) ids
+    in
+    (List.rev lst, env)
 end
 
 let rec unlink = function
@@ -78,10 +79,10 @@ let rec atom ?(first = false) env buffer = function
   | Var { contents = Bound id } -> Buffer.add_string buffer (Map.find id env)
   | Var { contents = Generic id } -> Printf.bprintf buffer "(generic %d)" id
   | Var { contents = Link ty } -> atom ~first env buffer ty
-  | ty -> Printf.bprintf buffer "(%a)" (expr ~first env) ty
+  | ty -> Printf.bprintf buffer "(%a)" (expr env) ty
 and expr ?(first = false) env buffer = function
   | Arrow (a, r) ->
-    let func = if List.length a > 1 then expr env else atom env in
+    let func = if List.length a = 0 then expr env else atom env in
     Printf.bprintf buffer "%s%a -> %a%s"
       (if first then "(" else "")
       (Buffer.add_list ~sep:" -> " func) a
@@ -91,7 +92,7 @@ and expr ?(first = false) env buffer = function
     let lst, env = Map.extend env ids in
     Printf.bprintf buffer "(forall (%a) %a)"
       (Buffer.add_list ~sep:" " Buffer.add_string) lst
-      (atom ~first env) ty
+      (expr ~first env) ty
   | Var { contents = Link ty } -> expr ~first env buffer ty
   | ty -> atom ~first env buffer ty
 

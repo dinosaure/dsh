@@ -244,7 +244,7 @@ let generalization level ty =
     | Type.Const _ -> ()
   in aux ty; match !acc with
   | [] -> ty
-  | ids -> Type.Forall (ids, ty)
+  | ids -> Type.Forall (List.rev ids, ty)
 
 let rec compute_function n = function
   | Type.Arrow (a, r) as ty ->
