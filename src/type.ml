@@ -74,6 +74,11 @@ let rec atom ?(first = false) env buffer = function
     Printf.bprintf buffer "(%a %a)"
       (atom ~first env) f
       (Buffer.add_list ~sep:" " (expr ~first env)) a
+  | Forall (ids, ty) ->
+    let lst, env = Map.extend env ids in
+    Printf.bprintf buffer "(forall (%a) %a)"
+      (Buffer.add_list ~sep:" " Buffer.add_string) lst
+      (expr ~first:true env) ty
   | Var { contents = Unbound (id, _) } ->
     Printf.bprintf buffer "(unknown %d)" id
   | Var { contents = Bound id } -> Buffer.add_string buffer (Map.find id env)
@@ -88,11 +93,6 @@ and expr ?(first = false) env buffer = function
       (Buffer.add_list ~sep:" -> " func) a
       (expr env) r
       (if first then ")" else "")
-  | Forall (ids, ty) ->
-    let lst, env = Map.extend env ids in
-    Printf.bprintf buffer "(forall (%a) %a)"
-      (Buffer.add_list ~sep:" " Buffer.add_string) lst
-      (expr ~first env) ty
   | Var { contents = Link ty } -> expr ~first env buffer ty
   | ty -> atom ~first env buffer ty
 
