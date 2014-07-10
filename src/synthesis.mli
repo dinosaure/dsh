@@ -20,6 +20,9 @@ exception Circularity of (Type.t * Type.t)
 exception Expected_argument of (Type.t * int)
 exception Expected_function of Type.t
 exception Unbound_variable of string
+exception Variable_no_instantiated
+exception Polymorphic_parameter_inferred of Type.t list
+exception Is_not_instance of (Type.t * Type.t)
 
 val string_of_exn : exn -> string
 
