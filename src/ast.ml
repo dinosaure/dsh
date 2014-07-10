@@ -48,7 +48,7 @@ let to_string tree =
         (Buffer.add_list ~sep:" " compute) a
     | Abs (_, a, c) ->
       Printf.bprintf buffer "(lambda (%a) %a)"
-        (Buffer.add_list ~sep:", " Buffer.add_argument) a
+        (Buffer.add_list ~sep:" " Buffer.add_argument) a
         compute c
     | Let (_, name, e, c) ->
       Printf.bprintf buffer "(let (%s %a) %a)"
