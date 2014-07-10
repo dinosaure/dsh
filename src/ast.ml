@@ -56,7 +56,7 @@ let to_string tree =
         compute e
         compute c
     | Ann (_, e, ann) ->
-      Printf.bprintf buffer "(%a : %a)"
+      Printf.bprintf buffer "%a : %a"
         compute e
         Buffer.add_annotation ann
   in compute buffer tree; Buffer.contents buffer

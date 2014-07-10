@@ -108,7 +108,7 @@ let to_string = function
   | OK ty -> "OK: " ^ ty
 
 let normalize ty =
-  Type.to_string (Parser.single_forall Lexer.token (Lexing.from_string ty))
+  Type.to_string (Parser.single_ty Lexer.token (Lexing.from_string ty))
 
 let compare r1 r2 =
   let open W in

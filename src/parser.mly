@@ -40,9 +40,6 @@ let replace ids ty =
 %start single_ty
 %type <Type.t> single_ty
 
-%start single_forall
-%type <Type.t> single_forall
-
 %%
 
 slist(X):
@@ -63,10 +60,6 @@ single_ty:
   | a = ty EOF
   { a }
 
-single_forall:
-  | a = forall EOF
-  { a }
-
 expr:
   | LPAR LET LPAR n = NAME e = expr RPAR c = expr RPAR
   { Ast.Let (Location.make $startpos $endpos, n, e, c) }
@@ -80,7 +73,7 @@ expr:
   { Ast.App (Location.make $startpos $endpos, f, a) }
   | LBRA a = expr o = expr b = expr RBRA
   { Ast.App (Location.make $startpos $endpos, o, [a; b]) }
-  | LPAR a = expr COMMA n = ann RPAR
+  | a = expr COMMA n = ann
   { Ast.Ann (Location.make $startpos $endpos, a, n) }
 
 param:
@@ -98,18 +91,14 @@ ty:
   { Type.Arrow c }
   | LPAR x = ty RPAR
   { x }
+  | LPAR FORALL l = slist(NAME) x = ty RPAR
+  { let (ids, ty) = replace l x in
+    match ids with
+    | [] -> ty
+    | _ -> Type.Forall (ids, ty) }
 
 ann:
   | x = ty
   { ([], x) }
   | LPAR SOME l = slist(NAME) x = ty RPAR
   { replace l x }
-
-forall:
-  | LPAR FORALL l = slist(NAME) x = ty RPAR
-  { let (ids, ty) = replace l x in
-    match ids with
-    | [] -> ty
-    | _ -> Type.Forall (ids, ty) }
-  | x = ty
-  { x }
