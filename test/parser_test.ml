@@ -4,20 +4,24 @@ module Ast_without_loc = struct
   type t =
     | Var of string
     | App of (t * t list)
-    | Abs of (string list * t)
+    | Abs of ((string * annotation option) list * t)
     | Let of (string * t * t)
+    | Ann of (t * annotation)
+  and annotation = (int list * Type.t)
 
   let rec to_ast = function
     | Var name -> Ast.Var (Location.dummy, name)
     | App (f, a) -> Ast.App (Location.dummy, to_ast f, List.map to_ast a)
     | Abs (a, r) -> Ast.Abs (Location.dummy, a, to_ast r)
     | Let (name, e, c) -> Ast.Let (Location.dummy, name, to_ast e, to_ast c)
+    | Ann (e, ann) -> Ast.Ann (Location.dummy, to_ast e, ann)
 
   let rec of_ast = function
     | Ast.Var (_, name) -> Var name
     | Ast.App (_, f, a) -> App (of_ast f, List.map of_ast a)
     | Ast.Abs (_, a, r) -> Abs (a, of_ast r)
     | Ast.Let (_, name, e, c) -> Let (name, of_ast e, of_ast c)
+    | Ast.Ann (_, e, ann) -> Ann (of_ast e, ann)
 end
 
 type t =
@@ -32,13 +36,15 @@ let tests =
     (")", Fail);
     ("())", Fail);
     ("x", OK (Var "x"));
-    ("(lambda (x) x)", OK (Abs (["x"], Var "x")));
+    ("(lambda (x) x)", OK (Abs ([("x", None)], Var "x")));
     ("(lambda x x)", Fail);
     ("(f x y)", OK (App (Var "f", [Var "x"; Var "y"])));
     ("((f x) y)", OK (App (App (Var "f", [Var "x"]), [Var "y"])));
     ("(f x) y", Fail);
     ("(let (f (lambda (x y) (g x y))) (f a b))",
-     OK (Let ("f", Abs (["x"; "y"], App (Var "g", [Var "x"; Var "y"])),
+     OK (Let ("f",
+              Abs ([("x", None); ("y", None)],
+                   App (Var "g", [Var "x"; Var "y"])),
               App (Var "f", [Var "a"; Var "b"]))));
     ("(let (x a) (let (y b) (f x y)))",
      OK (Let ("x", Var "a",

@@ -3,16 +3,12 @@ type t =
   | App of (t * t list)
   | Arrow of (t list * t)
   | Var of var ref
+  | Forall of (int list * t)
 and var =
   | Unbound of int * int
+  | Bound of int
   | Link of t
   | Generic of int
-
-module Hashtbl = struct
-  include Hashtbl
-
-  let to_list tbl = Hashtbl.fold (fun id name acc -> name :: acc) tbl []
-end
 
 module Buffer = struct
   include Buffer
@@ -38,47 +34,67 @@ module String = struct
     in aux lst; Buffer.contents buffer
 end
 
-let to_string ty =
+module Map = struct
+  include Map.Make (struct type t= int let compare = compare end)
+
+  let generate i =
+    (String.make 1 (char_of_int (int_of_char 'a' + (i mod 26))))
+    ^ (if i >= 26 then (string_of_int (i / 26)) else "")
+
+  let extend env lst =
+    let rec aux (acc, env) = function
+      | [] -> (List.rev acc, env)
+      | x :: r ->
+        let name = generate (cardinal env) in
+        aux (name :: acc, add x name env) r
+    in aux ([], env) lst
+end
+
+let rec unlink = function
+  | Var ({ contents = Link ty } as t) ->
+    let ty = unlink ty in
+    t := Link ty; ty
+  | ty -> ty
+
+let rec is_monomorphic = function
+  | Forall _ -> false
+  | Const _ -> true
+  | Var { contents = Link ty } -> is_monomorphic ty
+  | Var _ -> true
+  | App (f, a) ->
+    is_monomorphic f && List.for_all is_monomorphic a
+  | Arrow (a, r) ->
+    List.for_all is_monomorphic a && is_monomorphic r
+
+let rec atom ?(first = false) env buffer = function
+  | Const name ->
+    Buffer.add_string buffer name
+  | App (f, a) ->
+    Printf.bprintf buffer "(%a %a)"
+      (atom ~first env) f
+      (Buffer.add_list ~sep:" " (expr ~first env)) a
+  | Var { contents = Unbound (id, _) } ->
+    Printf.bprintf buffer "(unknown %d)" id
+  | Var { contents = Bound id } -> Buffer.add_string buffer (Map.find id env)
+  | Var { contents = Generic id } -> Printf.bprintf buffer "(generic %d)" id
+  | Var { contents = Link ty } -> atom ~first env buffer ty
+  | ty -> Printf.bprintf buffer "(%a)" (expr ~first env) ty
+and expr ?(first = false) env buffer = function
+  | Arrow (a, r) ->
+    let func = if List.length a > 1 then expr env else atom env in
+    Printf.bprintf buffer "%s%a -> %a%s"
+      (if first then "(" else "")
+      (Buffer.add_list ~sep:" -> " func) a
+      (expr env) r
+      (if first then ")" else "")
+  | Forall (ids, ty) ->
+    let lst, env = Map.extend env ids in
+    Printf.bprintf buffer "(forall (%a) %a)"
+      (Buffer.add_list ~sep:" " Buffer.add_string) lst
+      (atom ~first env) ty
+  | Var { contents = Link ty } -> expr ~first env buffer ty
+  | ty -> atom ~first env buffer ty
+
+let to_string ?(env = Map.empty) ty =
   let buffer = Buffer.create 16 in
-  let map = Hashtbl.create 16 in
-  let name =
-    let count = ref 0 in
-    (fun () ->
-       let i = !count in
-       incr count;
-       let name =
-         (String.make 1 (char_of_int (int_of_char 'a' + (i mod 26))))
-         ^ (if i >= 26 then (string_of_int (i / 26)) else "")
-       in name)
-  in
-  let rec compute ?(in_left = false) ?(level = 0) buffer = function
-    | Const name -> Buffer.add_string buffer name
-    | App (f, a) ->
-      Printf.bprintf buffer "(%a %a)"
-        (compute ~in_left ~level) f
-        (Buffer.add_list ~sep:" " compute) a
-    | Arrow (a, r) ->
-      Printf.bprintf buffer "%s%a -> %a%s"
-        (if in_left || level = 0 then "(" else "")
-        (Buffer.add_list ~sep:" -> "
-           (compute
-              ~in_left:(List.length a >= 1)
-              ~level:(level + 1))) a
-        (compute ~in_left:false ~level:(level + 1)) r
-        (if in_left || level = 0 then ")" else "")
-    | Var { contents = Generic id } ->
-      let name =
-        try Hashtbl.find map id
-        with _ -> let name = name () in Hashtbl.add map id name; name
-      in Buffer.add_string buffer name
-    | Var { contents = Unbound (id, _) } ->
-      Buffer.add_string buffer ("_" ^ (string_of_int id))
-    | Var { contents = Link t } -> compute ~in_left ~level buffer t
-  in compute buffer ty;
-  if Hashtbl.length map > 0
-  then
-    Printf.sprintf "(forall (%a) %s)"
-      (fun () -> String.of_list ~sep:" " (fun x -> x))
-      (List.sort String.compare (Hashtbl.to_list map))
-      (Buffer.contents buffer)
-  else Buffer.contents buffer
+  expr ~first:true env buffer ty; Buffer.contents buffer

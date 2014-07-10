@@ -15,9 +15,11 @@ rule token = parse
   | ')'                             { Parser.RPAR }
   | '['                             { Parser.LBRA }
   | ']'                             { Parser.RBRA }
+  | ':'                             { Parser.COMMA }
   | "lambda"                        { Parser.LAMBDA }
   | "let"                           { Parser.LET }
   | "forall"                        { Parser.FORALL }
+  | "some"                          { Parser.SOME }
   | "->"                            { Parser.ARROW }
   | name as n                       { Parser.NAME n }
   | eof                             { Parser.EOF }
@@ -30,9 +32,11 @@ let string_of_token = function
   | Parser.RPAR -> ")"
   | Parser.LBRA -> "["
   | Parser.RBRA -> "]"
+  | Parser.COMMA -> ":"
   | Parser.LET -> "let"
   | Parser.LAMBDA -> "lambda"
   | Parser.FORALL -> "forall"
+  | Parser.SOME -> "some"
   | Parser.ARROW -> "->"
   | Parser.NAME n -> n
   | Parser.EOF -> "<EOF>"

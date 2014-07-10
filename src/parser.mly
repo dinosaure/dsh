@@ -1,15 +1,20 @@
 %{
 
-let replace lst ty =
+let replace ids ty =
   let open Type in
-  let env = List.fold_left
-    (fun env name -> W.Environment.extend env name (W.Variable.generic ()))
-    W.Environment.empty lst
-  in
+  let map = Hashtbl.create 16 in
+  let lst = ref [] in
+  List.iter (fun name -> Hashtbl.replace map name None) ids;
   let rec aux = function
     | Const name as ty ->
       begin
-        try W.Environment.lookup env name
+        try match Hashtbl.find map name with
+          | Some var -> var
+          | None ->
+            let (id, var) = W.Variable.bound () in
+            lst := id :: !lst;
+            Hashtbl.replace map name (Some var);
+            var
         with Not_found -> ty
       end
     | Var _ as ty -> ty
@@ -17,14 +22,16 @@ let replace lst ty =
       App (aux f, List.map aux a)
     | Arrow (a, r) ->
       Arrow (List.map aux a, aux r)
-  in aux ty
+    | Forall (ids, ty) ->
+      Forall (ids, aux ty)
+  in (List.rev !lst, aux ty)
 
 %}
 
 %token <string> NAME
-%token LET LAMBDA FORALL
+%token LET LAMBDA FORALL SOME
 %token LPAR RPAR LBRA RBRA
-%token ARROW
+%token ARROW COMMA
 %token EOF
 
 %start single_expr
@@ -63,7 +70,7 @@ single_forall:
 expr:
   | LPAR LET LPAR n = NAME e = expr RPAR c = expr RPAR
   { Ast.Let (Location.make $startpos $endpos, n, e, c) }
-  | LPAR LAMBDA l = slist(NAME) e = expr RPAR
+  | LPAR LAMBDA l = slist(param) e = expr RPAR
   { Ast.Abs (Location.make $startpos $endpos, l, e) }
   | n = NAME
   { Ast.Var (Location.make $startpos $endpos, n) }
@@ -73,6 +80,14 @@ expr:
   { Ast.App (Location.make $startpos $endpos, f, a) }
   | LBRA a = expr o = expr b = expr RBRA
   { Ast.App (Location.make $startpos $endpos, o, [a; b]) }
+  | LPAR a = expr COMMA n = ann RPAR
+  { Ast.Ann (Location.make $startpos $endpos, a, n) }
+
+param:
+  | x = NAME
+  { (x, None) }
+  | x = NAME COMMA n = ann
+  { (x, Some n) }
 
 ty:
   | n = NAME
@@ -84,8 +99,17 @@ ty:
   | LPAR x = ty RPAR
   { x }
 
+ann:
+  | x = ty
+  { ([], x) }
+  | LPAR SOME l = slist(NAME) x = ty RPAR
+  { replace l x }
+
 forall:
   | LPAR FORALL l = slist(NAME) x = ty RPAR
-  { replace l x }
+  { let (ids, ty) = replace l x in
+    match ids with
+    | [] -> ty
+    | _ -> Type.Forall (ids, ty) }
   | x = ty
   { x }

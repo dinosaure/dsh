@@ -11,6 +11,7 @@ module Variable : sig
 
   val make : int -> Type.t
   val generic : unit -> Type.t
+  val bound : unit -> (int * Type.t)
 end
 
 exception Recursive_type of Type.t
