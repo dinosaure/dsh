@@ -33,7 +33,7 @@ let replace ids ty =
 %}
 
 %token <string> NAME
-%token LET LAMBDA FORALL SOME
+%token LET LAMBDA FORALL SOME REC
 %token LPAR RPAR LBRA RBRA
 %token ARROW COMMA
 %token EOF
@@ -67,6 +67,8 @@ single_ty:
 expr:
   | LPAR LET LPAR n = NAME e = expr RPAR c = expr RPAR
   { Ast.Let (Location.make $startpos $endpos, n, e, c) }
+  | LPAR REC LPAR n = NAME e = expr RPAR c = expr RPAR
+  { Ast.Rec (Location.make $startpos $endpos, n, e, c) }
   | LPAR LAMBDA l = slist(param) e = expr RPAR
   { Ast.Abs (Location.make $startpos $endpos, l, e) }
   | n = NAME

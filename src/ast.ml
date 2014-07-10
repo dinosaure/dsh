@@ -3,6 +3,7 @@ type t =
   | App of (Location.t * t * t list)
   | Abs of (Location.t * (string * annotation option) list * t)
   | Let of (Location.t * string * t * t)
+  | Rec of (Location.t * string * t * t)
   | Ann of (Location.t * t * annotation)
 and annotation = (int list * Type.t)
 
@@ -52,6 +53,11 @@ let to_string tree =
         compute c
     | Let (_, name, e, c) ->
       Printf.bprintf buffer "(let (%s %a) %a)"
+        name
+        compute e
+        compute c
+    | Rec (_, name, e, c) ->
+      Printf.bprintf buffer "(rec (%s %a) %a)"
         name
         compute e
         compute c

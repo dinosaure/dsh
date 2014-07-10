@@ -6,6 +6,7 @@ module Ast_without_loc = struct
     | App of (t * t list)
     | Abs of ((string * annotation option) list * t)
     | Let of (string * t * t)
+    | Rec of (string * t * t)
     | Ann of (t * annotation)
   and annotation = (int list * Type.t)
 
@@ -14,6 +15,7 @@ module Ast_without_loc = struct
     | App (f, a) -> Ast.App (Location.dummy, to_ast f, List.map to_ast a)
     | Abs (a, r) -> Ast.Abs (Location.dummy, a, to_ast r)
     | Let (name, e, c) -> Ast.Let (Location.dummy, name, to_ast e, to_ast c)
+    | Rec (name, e, c) -> Ast.Rec (Location.dummy, name, to_ast e, to_ast c)
     | Ann (e, ann) -> Ast.Ann (Location.dummy, to_ast e, ann)
 
   let rec of_ast = function
@@ -21,6 +23,7 @@ module Ast_without_loc = struct
     | Ast.App (_, f, a) -> App (of_ast f, List.map of_ast a)
     | Ast.Abs (_, a, r) -> Abs (a, of_ast r)
     | Ast.Let (_, name, e, c) -> Let (name, of_ast e, of_ast c)
+    | Ast.Rec (_, name, e, c) -> Rec (name, of_ast e, of_ast c)
     | Ast.Ann (_, e, ann) -> Ann (of_ast e, ann)
 end
 
