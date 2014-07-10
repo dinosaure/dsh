@@ -316,7 +316,7 @@ let rec eval env level = function
     let e' = eval env (level + 1) e in
     eval (Environment.extend env n e') level c
   | Ast.Rec (_, n, e, c) ->
-    let n' = Variable.make (level + 1) in
+    let n' = Variable.make (level - 1) in
     let ext = Environment.extend env n n' in
     let e' = eval ext (level + 1) e in
     unification n' e';
