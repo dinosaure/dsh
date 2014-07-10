@@ -76,7 +76,12 @@ let string_of_exn = function
     ("expected function: " ^ (Type.to_string ty))
   | Unbound_variable name ->
     ("unbound variable: " ^ name)
-  | Variable_no_instantiated -> "Variable no instantiated"
+  | Variable_no_instantiated -> "variable no instantiated"
+  | Polymorphic_parameter_inferred lst ->
+    "polymorphic parameter inferred: "
+    ^ (String.concat ", " (List.map Type.to_string lst))
+  | Is_not_instance (a, b) ->
+    (Type.to_string a) ^ " is not instance of " ^ (Type.to_string b)
   | exn ->
     raise (Invalid_argument ("Synthesis.string_of_exn: "
                              ^ (Printexc.to_string exn)))
