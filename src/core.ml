@@ -11,13 +11,6 @@ let core =
   |> add "choose  : (forall (a) (a -> a -> a))"
   |> add "apply   : (forall (a b) ((a -> b) -> a -> b))"
   |> add "const   : (forall (a b) (a -> b -> a))"
-  |> add "ids     : (list (forall (a) (a -> a)))"
-  |> add "idd     : ((forall (a) (a -> a)) -> (forall (a) (a -> a)))"
-  |> add "iddd    : (forall (a) ((forall (a) (a -> a)) -> a -> a))"
-  |> add "idds    : ((list (forall (a) (a -> a)))
-                     -> (list (forall (a) (a -> a))))"
-  |> add "special : (((forall (a) (a -> a)) -> (forall (a) (a -> a)))
-                     -> (forall (a) (a -> a)))"
   |> add "if      : (forall (a) (bool -> a -> a -> a))"
 
   |> add "head    : (forall (a) ((list a) -> a))"
@@ -48,3 +41,11 @@ let core =
   |> add "any     : (forall (a) a)"
   |> add "magic   : (forall (a b) (a -> b))"
   |> add "poly    : ((forall (a) (a -> a)) -> (pair int bool))"
+  |> add "special : (((forall (a) (a -> a)) -> (forall (a) (a -> a)))
+                     -> (forall (a) (a -> a)))"
+  |> add "id_     : ((forall (a) (a -> a)) -> (forall (a) (a -> a)))"
+  |> add "id__    : (forall (a) ((forall (a) (a -> a)) -> (a -> a)))"
+  |> add "ids     : (list (forall (a) (a -> a)))"
+  |> add "ids_    : ((list (forall (a) (a -> a)))
+                     -> (list (forall (a) (a -> a))))"
+  |> add "magid   : ((forall (a b) (a -> b)) -> (forall (a b) (a -> b)))"

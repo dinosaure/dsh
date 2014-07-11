@@ -3,6 +3,7 @@ open OUnit2
 type t =
   | OK of string
   | Fail of exn
+  | Unsafe (* lazy to describe exception *)
 
 module Variable = struct
   include Synthesis.Variable
@@ -108,11 +109,54 @@ let tests =
      Fail (Synthesis.Conflict (Type.Const "int", Type.Const "bool")));
     ("(lambda (f : (forall (a) (a -> a))) [(f true), (f one)])",
      OK ("(((forall (a) (a -> a))) -> (pair bool int))"));
+    ("(cons ids nill)", OK ("(list (list (forall (a) (a -> a))))"));
+    ("(choose ids nill)", OK ("(list (forall (a) (a -> a)))"));
+    ("(choose nill ids)", OK ("(list (forall (a) (a -> a)))"));
+    ("(cons (lambda (x) (x)) ids)", OK ("(list (forall (a) (a -> a)))"));
+    ("(let (rcons (lambda (x y) (cons y x))) (rcons ids id))",
+     OK ("(list (forall (a) (a -> a)))"));
+    ("(cons id ids)", OK ("(list (forall (a) (a -> a)))"));
+    ("(cons id (cons succ nill))", OK ("(list (int -> int))"));
+    ("(poly id)", OK ("(pair int bool)"));
+    ("(poly (lambda (x) x))", OK ("(pair int bool)"));
+    ("(poly succ)",
+     Fail (Synthesis.Conflict (Variable.dummy, Type.Const "int")));
+    ("(apply succ one)", OK ("int"));
+    ("(apply poly id)", OK ("(pair int bool)"));
+    ("(id : (forall (a) (a -> a))) : (int -> int)", OK ("(int -> int)"));
+    ("(single (id : (forall (a) (a -> a))))",
+     OK ("(list (forall (a) (a -> a)))"));
+    ("((lambda (x) (lambda (y) (let (z (choose x y)) z)))
+       (id : (forall (a) (a -> a))))",
+     OK ("((forall (a) (a -> a)) -> (forall (a) (a -> a)))"));
+    ("(lambda (x : (forall (a) (a -> a))) x)",
+     OK ("(forall (a) ((forall (b) (b -> b)) -> a -> a))"));
+    ("(id_ id)", OK ("(forall (a) (a -> a))"));
+    ("(id__ id)", OK ("(forall (a) (a -> a))"));
+    ("(lambda (ids) (ids_ ids))", Unsafe);
+    ("(poly (id id))", OK ("(pair int bool)"));
+    ("(length (ids))", OK ("int"));
+    ("(map head (single ids))", OK ("(list (forall (a) (a -> a)))"));
+    ("(apply id one)", OK ("int"));
+    ("(poly magic)", OK ("(pair int bool)"));
+    ("(magid magic)", OK ("(forall (a b) (a -> b))"));
+    ("(lambda (f : (forall (a b) (a -> b))) (f : (forall (a) (a -> a))))",
+     OK ("((forall (a b) (a -> b)) -> (forall (a) (a -> a)))"));
+    ("(lambda (f : (forall (a b) (a -> b))) (let (a (magid f)) one))",
+     OK ("((forall (a b) (a -> b)) -> int)"));
+    ("(let (const (any : (forall (a) (a -> (forall (b) (b -> a))))))
+       (const any))"), OK ("(forall (a b) (a -> b))");
+    ("(rec (f (lambda (x) (f x))) f)", OK ("(forall (a b) (a -> b))"));
+    ("(rec (foldl (lambda (f a l)
+                   (if (empty l) a
+                    (foldl f (f a (head l)) (tail l))))) foldl)",
+     OK ("(forall (a b) ((a -> b -> a) -> a -> (list b) -> a))"));
   ]
 
 let to_string = function
   | Fail e -> "Fail: " ^ (Synthesis.string_of_exn e)
   | OK ty -> "OK: " ^ ty
+  | Unsafe -> "Fail"
 
 let normalize ty =
   Type.to_string (Parser.single_ty Lexer.token (Lexing.from_string ty))
@@ -131,7 +175,8 @@ let compare r1 r2 =
   | Fail (Expected_function a), Fail (Expected_function b) ->
     Type.compare a b
   | Fail (Unbound_variable n1), Fail (Unbound_variable n2) -> n1 = n2
-  | _, _ -> false
+  | Unsafe, Fail _ | Fail _, Unsafe -> true
+  | a, b -> a = b
 
 let make_test (expr, result) =
   String.escaped expr >:: fun _ ->
