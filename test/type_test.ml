@@ -139,8 +139,7 @@ let make_test (expr, result) =
       try Synthesis.Variable.reset ();
         let ty = Synthesis.eval Core.core 0
             (Parser.single_expr Lexer.token (Lexing.from_string expr)) in
-        let ty' = Synthesis.generalization (-1) ty in
-        OK (Type.to_string ty')
+        OK (Type.to_string ty)
       with exn -> Fail exn
     in
     assert_equal ~printer:to_string ~cmp:compare re result
