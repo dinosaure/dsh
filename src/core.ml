@@ -18,6 +18,7 @@ let core =
                      -> (list (forall (a) (a -> a))))"
   |> add "special : (((forall (a) (a -> a)) -> (forall (a) (a -> a)))
                      -> (forall (a) (a -> a)))"
+  |> add "if      : (forall (a) (bool -> a -> a -> a))"
 
   |> add "head    : (forall (a) ((list a) -> a))"
   |> add "tail    : (forall (a) ((list a) -> (list a)))"
@@ -26,11 +27,14 @@ let core =
   |> add "single  : (forall (a) (a -> (list a)))"
   |> add "map     : (forall (a b) ((a -> b) -> (list a) -> (list b)))"
   |> add "length  : (forall (a) ((list a) -> int))"
+  |> add "empty   : (forall (a) ((list a) -> bool))"
 
   |> add "one     : int"
+  |> add "two     : int"
   |> add "zero    : int"
   |> add "succ    : (int -> int)"
   |> add "+       : (int -> int -> int)"
+  |> add "-       : (int -> int -> int)"
 
   |> add "=       : (forall (a) (a -> a -> bool))"
   |> add "true    : bool"
