@@ -86,6 +86,25 @@ let string_of_exn = function
     raise (Invalid_argument ("Synthesis.string_of_exn: "
                              ^ (Printexc.to_string exn)))
 
+(** compute_variable : makes sure that the type variable being
+  * unified doesn't occur within the it is being unified with.
+  *
+  * Each variable has a "level", which indicates how definition has been
+  * created. The higher the level, the higher the variable has been introduced
+  * recently. When assigning a variable V by a type T, we must preserve this
+  * information. In particular, if the type T contains variables that higher
+  * level, it is necessary to lower the level of these variables at V.
+  * Everything must happen as if, instead of having introduced a variable to a
+  * certain date and then determined its value by unification, we had guessed
+  * the correct value at the Introduction of the variable.
+  *
+  * @param id id of `Unbound` type variable to prevent circularity
+  * @param level level of `Unbound` type
+  * @param ty type with wich we will unify
+  *
+  * @raise Recursive_type if [id] is found is [ty]
+*)
+
 let compute_variable id level ty =
   let rec aux = function
     | Type.Var { contents = Type.Link ty } -> aux ty
@@ -102,6 +121,15 @@ let compute_variable id level ty =
     | Type.Forall (_, ty) -> aux ty
     | Type.Const _ -> ()
   in aux ty
+
+(** substitution : takes a list of `Bound` variables [ids], a list of
+ * replacement types [tys] and type a type [ty]. Returns a new type [ty]
+ * with `Bound` variables substitued with respective replacement types.
+ *
+ * @param ids list of id of `Bound` variables
+ * @param tys list of type for replace with respective id
+ * @param ty type to apply modification
+*)
 
 let substitution ids tys ty =
   let rec aux map = function
@@ -134,11 +162,42 @@ let catch_generic_variable ty =
     | Type.Forall (_, ty) -> aux ty
   in aux ty; set
 
+(** union : takes a list of `Generic` type variables and types [ty1] and type
+ * [ty2] and checks if any of the `Generic` type variables appears in any of
+ * the sets of free generic variables in [ty1] or [ty2].
+ *
+ * See [catch_generic_variable] for capturing free generic variables.
+ *
+ * @param lst list of `Generic` type variables
+ * @param ty1
+ * @param ty2
+ *
+ * @return true if a `Generic` type variables appears in [ty1] or [ty2]
+*)
+
 let union lst ty1 ty2 =
   let set1 = catch_generic_variable ty1 in
   let set2 = catch_generic_variable ty2 in
   List.exists
     (fun var -> Set.mem set1 var || Set.mem set2 var) lst
+
+(** unification : takes two types and tries to them, i.e. determine if they can
+ * be equal. Type constants unify with identical type contents, and arrow types
+ * and other structured types are unified by unifying each of their components.
+ * After first performing an "occurs check" (see [compute_variable]), unbound
+ * type variables can be unified with any type by replacing their reference with
+ * a link pointing to the other type T.
+ *
+ * If type T pointed is known, it should not reduce the variable type T since
+ * it can be shared by other variables and we could break links.
+ *
+ * @param t1
+ * @param t2
+ *
+ * @raise Conflict if can not unify t1 and t2 (ex: unify int bool)
+ * @raise Variable_no_instantiated if found `Bound` type variable. Indeed, it's
+ * normally impossible after a substitution by `Forall` normalized expression.
+*)
 
 let rec unification t1 t2 =
   if t1 == t2 then ()
@@ -172,6 +231,21 @@ let rec unification t1 t2 =
       compute_variable id level ty;
       var := Type.Link ty
     | (Type.Forall (ids1, ty1) as forall1),
+
+      (** First, we create a fresh `Generic` type variable for every type
+       * variable bound by the two polymorphic types. Here, we rely on the fact
+       * that bot types are normalized, so equivalent generic type variables
+       * should appear in the same locations in both types.
+       *
+       * Then, we substitute all `Bound` type variables in both types with
+       * `Generic` type variables, an try to unify them.
+       *
+       * If unification success, we check that none of the `Generic` type
+       * variables escapes, otherwise, we would successfilly unify types
+       * `(forall (a) (a -> a))` and `(forall (a) (a -> b))`, where `b` is a
+       * unifiable `Unbound` type variable.
+      *)
+
       (Type.Forall (ids2, ty2) as forall2) ->
       let lst =
         try List.rev_map2 (fun _ _ -> Variable.generic ()) ids1 ids2
@@ -219,6 +293,14 @@ let specialization level ty =
   in aux ty
 *)
 
+(** specialization : instantiates a `Forall` type by substituting bound type
+ * variables by fresh `Unbound` type variables, wich can then by unified with
+ * any other type.
+ *
+ * @param level level for create `Unbound` type variable
+ * @param ty type to apply modification
+*)
+
 let rec specialization level = function
   | Type.Forall (ids, ty) ->
     let lst = List.rev_map (fun _ -> Variable.make level) ids in
@@ -226,11 +308,21 @@ let rec specialization level = function
   | Type.Var { contents = Type.Link ty } -> specialization level ty
   | ty -> ty
 
+(** specialization_annotation : same as specialization but for annotation *)
+
 let specialization_annotation level = function
   | [], ty -> [], ty
   | ids, ty ->
     let lst = List.rev_map (fun _ -> Variable.make level) ids in
     lst, substitution ids lst ty
+
+(** generalization : transforms a type into a `Forall` type by substituting all
+ * `Unbound` type variables, with levels higher then the [level] with `Bound`
+ * type variables. The traverse order is same as Parse.replace.
+ *
+ * @param level date of declaration
+ * @param ty type to apply modification
+*)
 
 let generalization level ty =
   let acc = ref [] in

@@ -1,5 +1,13 @@
 %{
 
+(** replace : turns type constants `a` and `b` into `Bound` type variable
+ * if they are bound by `Forall` or `Some`.
+ *
+ * @param ids list of constants
+ * @param ty type contains constants
+ * @return list of `Bound` type variable and type
+*)
+
 let replace ids ty =
   let open Type in
   let map = Hashtbl.create 16 in
@@ -22,10 +30,13 @@ let replace ids ty =
       let f' = aux f in
       let a' = List.map aux a in
       App (f', a')
+      (** App (aux f, List.map aux a)
+       * This does not respect the order of appearance of the variables *)
     | Arrow (a, r) ->
       let a' = List.map aux a in
       let r' = aux r in
       Arrow (a', r')
+      (** see App *)
     | Forall (ids, ty) ->
       Forall (ids, aux ty)
   in (List.rev !lst, aux ty)
