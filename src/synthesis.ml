@@ -230,22 +230,22 @@ let rec unification t1 t2 =
     | ty, Type.Var ({ contents = Type.Unbound (id, level) } as var) ->
       compute_variable id level ty;
       var := Type.Link ty
+
+    (** First, we create a fresh `Generic` type variable for every type
+     * variable bound by the two polymorphic types. Here, we rely on the fact
+     * that bot types are normalized, so equivalent generic type variables
+     * should appear in the same locations in both types.
+     *
+     * Then, we substitute all `Bound` type variables in both types with
+     * `Generic` type variables, an try to unify them.
+     *
+     * If unification success, we check that none of the `Generic` type
+     * variables escapes, otherwise, we would successfilly unify types
+     * `(forall (a) (a -> a))` and `(forall (a) (a -> b))`, where `b` is a
+     * unifiable `Unbound` type variable.
+    *)
+
     | (Type.Forall (ids1, ty1) as forall1),
-
-      (** First, we create a fresh `Generic` type variable for every type
-       * variable bound by the two polymorphic types. Here, we rely on the fact
-       * that bot types are normalized, so equivalent generic type variables
-       * should appear in the same locations in both types.
-       *
-       * Then, we substitute all `Bound` type variables in both types with
-       * `Generic` type variables, an try to unify them.
-       *
-       * If unification success, we check that none of the `Generic` type
-       * variables escapes, otherwise, we would successfilly unify types
-       * `(forall (a) (a -> a))` and `(forall (a) (a -> b))`, where `b` is a
-       * unifiable `Unbound` type variable.
-      *)
-
       (Type.Forall (ids2, ty2) as forall2) ->
       let lst =
         try List.rev_map2 (fun _ _ -> Variable.generic ()) ids1 ids2
@@ -362,6 +362,26 @@ let rec compute_function n = function
     lst, r
   | _ as ty -> raise (Expected_function ty)
 
+(** subsume : takes two types [ty1] [ty2] and determines if [ty1] is an of
+ * [ty2]. For example, `(int -> int)` is an instance of
+ * `(forall (a) (a -> a))` (the type of `id`) which in turn is an instance
+ * of `(foralle (a b) (a -> b))` (type of `magic`). This means that we can
+ * pass `id` as an argument to a function expecting `(int -> int)` and we can
+ * pass `magic` to a function expecing `(forall (a) (a -> a))` but not the
+ * other way round. To determine if [ty1] is an instance of [ty2], [subsume]
+ * first instantiates [ty2], the more general type, with `Unbound` type
+ * varibales. If [ty1] is not polymorphic, is simply unifies the two types.
+ * Otherwise, it instantiates [ty1] with `Generic` type variables and uunifies
+ * both instantiated types. If unification success, we check that no generic
+ * variables escapes (see [union]).
+ *
+ * @param level level for make specializationon [ty2]
+ * @param ty1
+ * @param ty2
+ *
+ * @raise Is_not_instance if [ty1] is not an instance of [ty2]
+*)
+
 let subsume level ty1 ty2 =
   let ty2' = specialization level ty2 in
   match Type.unlink ty1 with
@@ -380,6 +400,21 @@ let rec eval env level = function
       with Not_found -> raise (Unbound_variable name)
     end
   | Ast.Abs (_, a, c) ->
+
+    (** To infer the type of functions, we first extend the environment with the
+     * types of the parameters, which might be annoted. We remember all new type
+     * variables that appear in parameter types in [lstvar] so that we can later
+     * make sure that none of them was unified with polymorphic type.
+     *
+     * We then infer the type of the function body using the extended
+     * environment, and instantiate it unless it's annotated.
+     *
+     * Finally, we generalize the resulting function type.
+     *
+     * @raise Polymorphic_parameter_inferred if a parameter has been unified
+     * with polymorphic type
+    *)
+
     let refenv = ref env in
     let lstvar = ref [] in
     let a' = List.map (fun (name, ann) ->
@@ -400,6 +435,15 @@ let rec eval env level = function
     then raise (Polymorphic_parameter_inferred !lstvar)
     else generalization level (Type.Arrow (a', r'))
   | Ast.App (_, f, a) ->
+
+    (** To infer the type of function application we first infer the type of the
+     * function being called, instantiate it and separate parameter types from
+     * function return type.
+     *
+     * The core of the algorithm is infering argument types in the function
+     * [compute_argument].
+    *)
+
     let f' = specialization (level + 1) (eval env (level + 1) f) in
     let a', r' = compute_function (List.length a) f' in
     compute_argument env (level + 1) a' a;
@@ -414,10 +458,33 @@ let rec eval env level = function
     unification n' e';
     eval (Environment.extend env n (generalization level e')) level c
   | Ast.Ann (_, e, ann) ->
+
+    (** Infering type annotation `expr : type` is equivalent to inferring the
+     * type of function call `((lambda (x : type) x) expr)`, but optimized in
+     * this implementation of [eval].
+    *)
+
     let _, ty = specialization_annotation level ann in
     let e' = eval env level e in
     subsume level ty e';
     ty
+
+(** compute_argument : after infering the type of argument, we use the function
+ * [subsume] (or [unification] if the argument is annotated) to determine if the
+ * parameter type is an instance of the type of the argument.
+ *
+ * When calling functions with multiple arguments, we must first [subsume] the
+ * types of arguments for those parameters that are type variables, otherwise we
+ * would fail to typecheck applications such as `(revapply id poly), where
+ * `revapply : (forall (a b) (a -> (a -> b) -> b))`,
+ * `poly : ((forall (a) (a -> a ->)) -> (pair int bool))` and
+ * `id` : (forall (a) (a -> a)).
+ *
+ * @param env environment
+ * @param level level for [subsume] and [eval]
+ * @param tys list of types of arguments
+ * @param a list of arguments
+*)
 
 and compute_argument env level tys a =
   let plst = List.combine tys a in
