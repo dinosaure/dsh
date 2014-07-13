@@ -52,16 +52,17 @@ end
 exception Recursive_type of Type.t
 exception Conflict of (Type.t * Type.t)
 exception Circularity of (Type.t * Type.t)
-exception Expected_argument of (Type.t * int)
+exception Mismatch_arguments of Type.t
 exception Expected_function of Type.t
 exception Unbound_variable of string
 exception Variable_no_instantiated
-exception Polymorphic_parameter_inferred of Type.t list
-exception Is_not_instance of (Type.t * Type.t)
+exception Polymorphic_argument_inferred of Type.t list
+exception No_instance of (Type.t * Type.t)
+exception Error of (Location.t * exn)
 
-let string_of_exn = function
+let rec string_of_exn = function
   | Recursive_type ty ->
-    ("recursive type: " ^ (Type.to_string ty))
+    ("recursive type in " ^ (Type.to_string ty))
   | Conflict (a, b) ->
     ("conflict between "
      ^ (Type.to_string a) ^ " and "
@@ -70,18 +71,20 @@ let string_of_exn = function
     ("circularity between "
      ^ (Type.to_string a) ^ " and "
      ^ (Type.to_string b))
-  | Expected_argument (f, n) ->
-    ("expected " ^ (string_of_int n) ^ " argument(s) in " ^ (Type.to_string f))
+  | Mismatch_arguments t ->
+    ("mismatch argument(s) on " ^ (Type.to_string t))
   | Expected_function ty ->
-    ("expected function: " ^ (Type.to_string ty))
+    ("expected function in " ^ (Type.to_string ty))
   | Unbound_variable name ->
-    ("unbound variable: " ^ name)
+    ("unbound variable " ^ name)
   | Variable_no_instantiated -> "variable no instantiated"
-  | Polymorphic_parameter_inferred lst ->
-    "polymorphic parameter inferred: "
-    ^ (String.concat ", " (List.map Type.to_string lst))
-  | Is_not_instance (a, b) ->
-    (Type.to_string a) ^ " is not instance of " ^ (Type.to_string b)
+  | Polymorphic_argument_inferred lst ->
+    "polymorphic argument inferred in "
+    ^ (String.concat " or " (List.map Type.to_string lst))
+  | No_instance (a, b) ->
+    (Type.to_string a) ^ " is not an instance of " ^ (Type.to_string b)
+  | Error (loc, exn) ->
+    Printf.sprintf "%s at %s" (string_of_exn exn) (Location.to_string loc)
   | exn ->
     raise (Invalid_argument ("Synthesis.string_of_exn: "
                              ^ (Printexc.to_string exn)))
@@ -195,6 +198,7 @@ let union lst ty1 ty2 =
  * @param t2
  *
  * @raise Conflict if can not unify t1 and t2 (ex: unify int bool)
+ * @raise Circularity if [ty1] is dependent with [ty2]
  * @raise Variable_no_instantiated if found `Bound` type variable. Indeed, it's
  * normally impossible after a substitution by `Forall` normalized expression.
 *)
@@ -347,7 +351,7 @@ let generalization level ty =
 let rec compute_function n = function
   | Type.Arrow (a, r) as ty ->
     if List.length a <> n
-    then raise (Expected_argument (ty, n))
+    then raise (Mismatch_arguments ty)
     else a, r
   | Type.Var { contents = Type.Link ty } ->
     compute_function n ty
@@ -379,7 +383,7 @@ let rec compute_function n = function
  * @param ty1
  * @param ty2
  *
- * @raise Is_not_instance if [ty1] is not an instance of [ty2]
+ * @raise No_instance if [ty1] is not an instance of [ty2]
 *)
 
 let subsume level ty1 ty2 =
@@ -390,16 +394,24 @@ let subsume level ty1 ty2 =
     let ty1' = substitution ids lst ty1 in
     unification ty1' ty2';
     if union lst forall ty2
-    then raise (Is_not_instance (ty2, ty1))
+    then raise (No_instance (ty1, ty2))
   | ty1 -> unification ty1 ty2'
 
+let ( >!= ) func handle_error =
+  try func () with
+  | exn -> handle_error exn
+
+let raise_with_loc loc = function
+  | Error (loc, exn) as error -> raise error
+  | exn -> raise (Error (loc, exn))
+
 let rec eval env level = function
-  | Ast.Var (_, name) ->
-    begin
-      try Environment.lookup env name
-      with Not_found -> raise (Unbound_variable name)
-    end
-  | Ast.Abs (_, a, c) ->
+  | Ast.Var (loc, name) ->
+    (fun () ->
+       try Environment.lookup env name
+       with Not_found -> raise (Unbound_variable name)
+    ) >!= raise_with_loc loc
+  | Ast.Abs (loc, a, c) ->
 
     (** To infer the type of functions, we first extend the environment with the
      * types of the parameters, which might be annoted. We remember all new type
@@ -411,30 +423,33 @@ let rec eval env level = function
      *
      * Finally, we generalize the resulting function type.
      *
-     * @raise Polymorphic_parameter_inferred if a parameter has been unified
+     * @raise Polymorphic_argument_inferred if a parameter has been unified
      * with polymorphic type
     *)
-
-    let refenv = ref env in
-    let lstvar = ref [] in
-    let a' = List.map (fun (name, ann) ->
-        let ty = match ann with
-          | None ->
-            let var = Variable.make (level + 1) in
-            lstvar := var :: !lstvar;
-            var
-          | Some ann ->
-            let vars, ty = specialization_annotation (level + 1) ann in
-            lstvar := vars @ !lstvar;
-            ty
-        in refenv := Environment.extend !refenv name ty; ty) a
-    in
-    let r' = eval !refenv (level + 1) c in
-    let r' = if Ast.is_annotated c then r' else specialization (level + 1) r' in
-    if not (List.for_all Type.is_monomorphic !lstvar)
-    then raise (Polymorphic_parameter_inferred !lstvar)
-    else generalization level (Type.Arrow (a', r'))
-  | Ast.App (_, f, a) ->
+    (fun () ->
+       let refenv = ref env in
+       let lstvar = ref [] in
+       let a' = List.map (fun (name, ann) ->
+           let ty = match ann with
+             | None ->
+               let var = Variable.make (level + 1) in
+               lstvar := var :: !lstvar;
+               var
+             | Some ann ->
+               let vars, ty = specialization_annotation (level + 1) ann in
+               lstvar := vars @ !lstvar;
+               ty
+           in refenv := Environment.extend !refenv name ty; ty) a
+       in
+       let r' = eval !refenv (level + 1) c in
+       let r' =
+         if Ast.is_annotated c then r'
+         else specialization (level + 1) r' in
+       if not (List.for_all Type.is_monomorphic !lstvar)
+       then raise (Polymorphic_argument_inferred !lstvar)
+       else generalization level (Type.Arrow (a', r'))
+    ) >!= raise_with_loc loc
+  | Ast.App (loc, f, a) ->
 
     (** To infer the type of function application we first infer the type of the
      * function being called, instantiate it and separate parameter types from
@@ -444,30 +459,38 @@ let rec eval env level = function
      * [compute_argument].
     *)
 
-    let f' = specialization (level + 1) (eval env (level + 1) f) in
-    let a', r' = compute_function (List.length a) f' in
-    compute_argument env (level + 1) a' a;
-    generalization level (specialization (level + 1) r')
-  | Ast.Let (_, n, e, c) ->
-    let e' = eval env (level + 1) e in
-    eval (Environment.extend env n e') level c
-  | Ast.Rec (_, n, e, c) ->
-    let n' = Variable.make (level + 1) in
-    let ext = Environment.extend env n n' in
-    let e' = eval ext (level + 2) e in
-    unification n' e';
-    eval (Environment.extend env n (generalization level e')) level c
-  | Ast.Ann (_, e, ann) ->
+    (fun () ->
+       let f' = specialization (level + 1) (eval env (level + 1) f) in
+       let a', r' = compute_function (List.length a) f' in
+       compute_argument env (level + 1) a' a;
+       generalization level (specialization (level + 1) r')
+    ) >!= raise_with_loc loc
+  | Ast.Let (loc, n, e, c) ->
+    (fun () ->
+       let e' = eval env (level + 1) e in
+       eval (Environment.extend env n e') level c
+    ) >!= raise_with_loc loc
+  | Ast.Rec (loc, n, e, c) ->
+    (fun () ->
+       let n' = Variable.make (level + 1) in
+       let ext = Environment.extend env n n' in
+       let e' = eval ext (level + 2) e in
+       unification n' e';
+       eval (Environment.extend env n (generalization level e')) level c
+    ) >!= raise_with_loc loc
+  | Ast.Ann (loc, e, ann) ->
 
     (** Infering type annotation `expr : type` is equivalent to inferring the
      * type of function call `((lambda (x : type) x) expr)`, but optimized in
      * this implementation of [eval].
     *)
 
-    let _, ty = specialization_annotation level ann in
-    let e' = eval env level e in
-    subsume level ty e';
-    ty
+    (fun () ->
+       let _, ty = specialization_annotation level ann in
+       let e' = eval env level e in
+       subsume level ty e';
+       ty
+    ) >!= raise_with_loc loc
 
 (** compute_argument : after infering the type of argument, we use the function
  * [subsume] (or [unification] if the argument is annotated) to determine if the

@@ -67,35 +67,54 @@ let rec is_monomorphic = function
   | Arrow (a, r) ->
     List.for_all is_monomorphic a && is_monomorphic r
 
-let rec atom ?(first = false) env buffer = function
-  | Const name ->
-    Buffer.add_string buffer name
-  | App (f, a) ->
-    Printf.bprintf buffer "(%a %a)"
-      (atom ~first env) f
-      (Buffer.add_list ~sep:" " (expr ~first env)) a
-  | Forall (ids, ty) ->
-    let lst, env = Map.extend env ids in
-    Printf.bprintf buffer "(forall (%a) %a)"
-      (Buffer.add_list ~sep:" " Buffer.add_string) lst
-      (expr ~first:true env) ty
-  | Var { contents = Unbound (id, _) } ->
-    Printf.bprintf buffer "(unknown %d)" id
-  | Var { contents = Bound id } -> Buffer.add_string buffer (Map.find id env)
-  | Var { contents = Generic id } -> Printf.bprintf buffer "(generic %d)" id
-  | Var { contents = Link ty } -> atom ~first env buffer ty
-  | ty -> Printf.bprintf buffer "(%a)" (expr env) ty
-and expr ?(first = false) env buffer = function
-  | Arrow (a, r) ->
-    let func = if List.length a = 0 then expr env else atom env in
-    Printf.bprintf buffer "%s%a -> %a%s"
-      (if first then "(" else "")
-      (Buffer.add_list ~sep:" -> " func) a
-      (expr env) r
-      (if first then ")" else "")
-  | Var { contents = Link ty } -> expr ~first env buffer ty
-  | ty -> atom ~first env buffer ty
+let memoize f =
+  let cache = Hashtbl.create 16 in
+  let rec aux x =
+    try Hashtbl.find cache x
+    with Not_found ->
+      let y = f aux x in
+      Hashtbl.add cache x y; y
+  in aux
 
 let to_string ?(env = Map.empty) ty =
+  let count_unbound = ref 0 in
+  let name_of_unbound =
+    memoize (fun self id ->
+        let i = !count_unbound in
+        incr count_unbound;
+        let name = String.make 1 (Char.chr (97 + i mod 26)) ^
+                   if i >= 26 then string_of_int (i / 26) else ""
+        in "_" ^ name)
+  in
+  let rec atom ?(first = false) env buffer = function
+    | Const name ->
+      Buffer.add_string buffer name
+    | App (f, a) ->
+      Printf.bprintf buffer "(%a %a)"
+        (atom ~first env) f
+        (Buffer.add_list ~sep:" " (expr ~first env)) a
+    | Forall (ids, ty) ->
+      let lst, env = Map.extend env ids in
+      Printf.bprintf buffer "(forall (%a) %a)"
+        (Buffer.add_list ~sep:" " Buffer.add_string) lst
+        (expr ~first:true env) ty
+    | Var { contents = Unbound (id, _) } ->
+      Printf.bprintf buffer "%s" (name_of_unbound id)
+    | Var { contents = Bound id } -> Buffer.add_string buffer (Map.find id env)
+    | Var { contents = Generic id } ->
+      Printf.bprintf buffer "%s" (name_of_unbound id)
+    | Var { contents = Link ty } -> atom ~first env buffer ty
+    | ty -> Printf.bprintf buffer "(%a)" (expr env) ty
+  and expr ?(first = false) env buffer = function
+    | Arrow (a, r) ->
+      let func = if List.length a = 0 then expr env else atom env in
+      Printf.bprintf buffer "%s%a -> %a%s"
+        (if first then "(" else "")
+        (Buffer.add_list ~sep:" -> " func) a
+        (expr env) r
+        (if first then ")" else "")
+    | Var { contents = Link ty } -> expr ~first env buffer ty
+    | ty -> atom ~first env buffer ty
+  in
   let buffer = Buffer.create 16 in
   expr ~first:true env buffer ty; Buffer.contents buffer

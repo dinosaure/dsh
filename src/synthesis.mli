@@ -17,12 +17,13 @@ end
 exception Recursive_type of Type.t
 exception Conflict of (Type.t * Type.t)
 exception Circularity of (Type.t * Type.t)
-exception Expected_argument of (Type.t * int)
+exception Mismatch_arguments of Type.t
 exception Expected_function of Type.t
 exception Unbound_variable of string
 exception Variable_no_instantiated
-exception Polymorphic_parameter_inferred of Type.t list
-exception Is_not_instance of (Type.t * Type.t)
+exception Polymorphic_argument_inferred of Type.t list
+exception No_instance of (Type.t * Type.t)
+exception Error of (Location.t * exn)
 
 val string_of_exn : exn -> string
 

@@ -72,9 +72,9 @@ let tests =
     ("[one + true]",
      Fail (Synthesis.Conflict (Type.Const "int", Type.Const "bool")));
     ("(+ one)",
-     Fail (Synthesis.Expected_argument
+     Fail (Synthesis.Mismatch_arguments
              (Type.Arrow ([Type.Const "int"; Type.Const "int"],
-                          Type.Const "int"), 1)));
+                          Type.Const "int"))));
     ("(lambda (x) (let (y x) x))", OK ("(forall (a) (a -> a))"));
     ("(lambda (x) (let (y (let (z (x (lambda (x) x))) z)) y))",
      OK ("(forall (a b) (((a -> a) -> b) -> b))"));
@@ -161,17 +161,20 @@ let to_string = function
 let normalize ty =
   Type.to_string (Parser.single_ty Lexer.token (Lexing.from_string ty))
 
-let compare r1 r2 =
+let rec compare r1 r2 =
   let open Synthesis in
   match r1, r2 with
   | OK ty1, OK ty2 -> (normalize ty1) = (normalize ty2)
+  | Fail (Error (_, exn1)), Fail exn2
+  | Fail exn1, Fail (Error (_, exn2)) ->
+    compare (Fail exn1) (Fail exn2)
   | Fail (Recursive_type a), Fail (Recursive_type b) -> Type.compare a b
   | Fail (Conflict (a1, b1)), Fail (Conflict (a2, b2)) ->
     Type.compare a1 a2 && Type.compare b1 b2
   | Fail (Circularity (a1, b1)), Fail (Circularity (a2, b2)) ->
     Type.compare a1 a2 && Type.compare b1 b2
-  | Fail (Expected_argument (t1, n1)), Fail (Expected_argument (t2, n2)) ->
-    n1 = n2 && Type.compare t1 t2
+  | Fail (Mismatch_arguments t1), Fail (Mismatch_arguments t2) ->
+    Type.compare t1 t2
   | Fail (Expected_function a), Fail (Expected_function b) ->
     Type.compare a b
   | Fail (Unbound_variable n1), Fail (Unbound_variable n2) -> n1 = n2

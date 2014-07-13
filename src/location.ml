@@ -29,6 +29,10 @@ let to_string_of_file (a, b) filename =
   let cc = catch_str a b fd in
   close_in fd; cc
 
+let to_string_of_line (a, b) str =
+  Printf.sprintf "%s\n%-*s%s\n%!" str a.seek ""
+    (String.make (b.seek - a.seek) '^')
+
 let to_string (a, b) =
   let print_aux ty () (a, b) =
     if a = b then Printf.sprintf "%s%d" ty a
