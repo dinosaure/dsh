@@ -491,6 +491,8 @@ let rec eval env level = function
        subsume level ty e';
        ty
     ) >!= raise_with_loc loc
+  | Ast.Int _ -> Type.Const "int"
+  | Ast.Bool _ -> Type.Const "bool"
 
 (** compute_argument : after infering the type of argument, we use the function
  * [subsume] (or [unification] if the argument is annotated) to determine if the

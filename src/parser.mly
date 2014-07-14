@@ -44,7 +44,9 @@ let replace ids ty =
 %}
 
 %token <string> NAME
-%token LET LAMBDA FORALL SOME REC
+%token <int> NUMBER
+%token <bool> BOOL
+%token DEFINE LET LAMBDA FORALL SOME REC
 %token LPAR RPAR LBRA RBRA
 %token ARROW COMMA
 %token EOF
@@ -54,6 +56,9 @@ let replace ids ty =
 
 %start single_ty
 %type <Type.t> single_ty
+
+%start exprs
+%type <Ast.i list> exprs
 
 %%
 
@@ -66,6 +71,14 @@ alist(C, X):
   { r |> fun (x, r) -> (a :: x, r) }
   | x = X C y = X
   { ([ x ], y) }
+
+exprs:
+  | LPAR DEFINE n = NAME e = expr RPAR r = exprs
+  { Ast.Def (Location.make $startpos $endpos($5), n, e) :: r }
+  | e = expr r = exprs
+  { Ast.Expr (Location.make $startpos $endpos(e), e) :: r }
+  | EOF
+  { [] }
 
 single_expr:
   | a = expr EOF
@@ -92,6 +105,10 @@ expr:
   { Ast.App (Location.make $startpos $endpos, o, [a; b]) }
   | a = expr COMMA n = ann
   { Ast.Ann (Location.make $startpos $endpos, a, n) }
+  | i = NUMBER
+  { Ast.Int (Location.make $startpos $endpos, i) }
+  | b = BOOL
+  { Ast.Bool (Location.make $startpos $endpos, b) }
 
 param:
   | x = NAME

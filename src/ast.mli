@@ -5,7 +5,13 @@ type t =
   | Let of (Location.t * string * t * t)
   | Rec of (Location.t * string * t * t)
   | Ann of (Location.t * t * annotation)
+  | Int of (Location.t * int)
+  | Bool of (Location.t * bool)
 and annotation = (int list * Type.t)
+
+type i =
+  | Def of (Location.t * string * t)
+  | Expr of (Location.t * t)
 
 val is_annotated : t -> bool
 
