@@ -12,6 +12,11 @@ type t =
 
 exception Unbound_variable of string
 exception Expected_function
+exception Expected_boolean
+exception Error of (Location.t * exn)
+
+val string_of_exn : exn -> string
 
 val to_string : t -> string
+
 val eval : ?env:(t Environment.t) -> Ast.t -> t

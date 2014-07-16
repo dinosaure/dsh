@@ -151,6 +151,10 @@ let tests =
                    (if (empty l) a
                     (foldl f (f a (head l)) (tail l))))) foldl)",
      OK ("(forall (a b) ((a -> b -> a) -> a -> (list b) -> a))"));
+    ("(rec (foldr (lambda (f l a)
+                   (if (empty l) a
+                    (f (head l) (foldr f (tail l) a))))) foldr)",
+     OK ("(forall (a b) ((a -> b -> b) -> (list a) -> b -> b))"));
   ]
 
 let to_string = function

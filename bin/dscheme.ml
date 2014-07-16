@@ -25,6 +25,10 @@ let interpret expr =
             (Lexing.lexeme_start_p lexbuf)
             (Lexing.lexeme_end_p lexbuf))
          expr)
+  | Interpreter.Error (loc, exn) ->
+    Printf.printf "Interpreter error - %s at:\n%s%!"
+      (Interpreter.string_of_exn exn)
+      (Location.to_string_of_line loc expr)
 
 let () =
   let rec repl () =
