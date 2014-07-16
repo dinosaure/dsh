@@ -11,7 +11,6 @@ let core =
   |> add "choose  : (forall (a) (a -> a -> a))"
   |> add "apply   : (forall (a b) ((a -> b) -> a -> b))"
   |> add "const   : (forall (a b) (a -> b -> a))"
-  |> add "if      : (forall (a) (bool -> a -> a -> a))"
 
   |> add "head    : (forall (a) ((list a) -> a))"
   |> add "tail    : (forall (a) ((list a) -> (list a)))"
@@ -22,16 +21,15 @@ let core =
   |> add "length  : (forall (a) ((list a) -> int))"
   |> add "empty   : (forall (a) ((list a) -> bool))"
 
-  |> add "one     : int"
-  |> add "two     : int"
-  |> add "zero    : int"
   |> add "succ    : (int -> int)"
   |> add "+       : (int -> int -> int)"
   |> add "-       : (int -> int -> int)"
 
   |> add "=       : (forall (a) (a -> a -> bool))"
-  |> add "true    : bool"
-  |> add "false   : bool"
+  |> add ">       : (int -> int -> bool)"
+  |> add "<       : (int -> int -> bool)"
+  |> add ">=      : (int -> int -> bool)"
+  |> add "<=      : (int -> int -> bool)"
   |> add "not     : (bool -> bool)"
 
   |> add ",       : (forall (a b) (a -> b -> (pair a b)))"
@@ -49,3 +47,18 @@ let core =
   |> add "ids_    : ((list (forall (a) (a -> a)))
                      -> (list (forall (a) (a -> a))))"
   |> add "magid   : ((forall (a b) (a -> b)) -> (forall (a b) (a -> b)))"
+
+let add name func env =
+  Interpreter.Environment.add name (Interpreter.Primitive func) env
+
+let runtime =
+  let raise_error name = raise (Invalid_argument name) in
+  let open Interpreter in
+  Environment.empty
+  |> add "+" (function [Int a; Int b] -> Int (a + b) | _ -> raise_error "+")
+  |> add "-" (function [Int a; Int b] -> Int (a - b) | _ -> raise_error "+")
+  |> add "=" (function [a; b] -> Bool (a = b) | _ -> raise_error "=")
+  |> add ">" (function [Int a; Int b] -> Bool (a > b) | _ -> raise_error ">")
+  |> add "<" (function [Int a; Int b] -> Bool (a < b) | _ -> raise_error "<")
+  |> add ">=" (function [Int a; Int b] -> Bool (a >= b) | _ -> raise_error ">=")
+  |> add "<=" (function [Int a; Int b] -> Bool (a <= b) | _ -> raise_error "<=")

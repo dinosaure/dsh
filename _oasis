@@ -9,7 +9,8 @@ BuildTools:              ocamlbuild
 
 Library dscheme
   Path:                  src
-  Modules:               Location, Lexer, Parser, Ast, Type, Synthesis, Core
+  Modules:               Location, Lexer, Parser, Ast, Type, Synthesis, Core,
+                         Interpreter
 
 Executable dscheme
   Path:                  bin
