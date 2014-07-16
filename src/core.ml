@@ -22,10 +22,17 @@ let core =
   |> add "empty   : (forall (a) ((list a) -> bool))"
 
   |> add "succ    : (int -> int)"
+  |> add "pred    : (int -> int)"
   |> add "+       : (int -> int -> int)"
   |> add "-       : (int -> int -> int)"
+  |> add "*       : (int -> int -> int)"
+  |> add "/       : (int -> int -> int)"
+  |> add "%       : (int -> int -> int)"
 
   |> add "=       : (forall (a) (a -> a -> bool))"
+  |> add "==      : (forall (a) (a -> a -> bool))"
+  |> add "<>      : (forall (a) (a -> a -> bool))"
+  |> add "!=      : (forall (a) (a -> a -> bool))"
   |> add ">       : (int -> int -> bool)"
   |> add "<       : (int -> int -> bool)"
   |> add ">=      : (int -> int -> bool)"
@@ -56,9 +63,24 @@ let runtime =
   let open Interpreter in
   Environment.empty
   |> add "+" (function [Int a; Int b] -> Int (a + b) | _ -> raise_error "+")
-  |> add "-" (function [Int a; Int b] -> Int (a - b) | _ -> raise_error "+")
+  |> add "-" (function [Int a; Int b] -> Int (a - b) | _ -> raise_error "-")
+  |> add "*" (function [Int a; Int b] -> Int (a * b) | _ -> raise_error "*")
+  |> add "/" (function [Int a; Int b] -> Int (a / b) | _ -> raise_error "/")
+  |> add "%" (function [Int a; Int b] -> Int (a mod b) | _ -> raise_error "%")
+  |> add "succ" (function [Int a] -> Int (a + 1) | _ -> raise_error "succ")
+  |> add "pred" (function [Int a] -> Int (a - 1) | _ -> raise_error "pred")
+
   |> add "=" (function [a; b] -> Bool (a = b) | _ -> raise_error "=")
+  |> add "==" (function [a; b] -> Bool (a == b) | _ -> raise_error "=")
+  |> add "<>" (function [a; b] -> Bool (a <> b) | _ -> raise_error "=")
+  |> add "!=" (function [a; b] -> Bool (a != b) | _ -> raise_error "=")
   |> add ">" (function [Int a; Int b] -> Bool (a > b) | _ -> raise_error ">")
   |> add "<" (function [Int a; Int b] -> Bool (a < b) | _ -> raise_error "<")
   |> add ">=" (function [Int a; Int b] -> Bool (a >= b) | _ -> raise_error ">=")
   |> add "<=" (function [Int a; Int b] -> Bool (a <= b) | _ -> raise_error "<=")
+  |> add "not" (function [Bool a] -> Bool (not a) | _ -> raise_error "not")
+
+  |> add "and" (function [Bool a; Bool b] -> Bool (a && b)
+                       | _ -> raise_error "and")
+  |> add "or" (function [Bool a; Bool b] -> Bool (a || b)
+                      | _ -> raise_error "or")
