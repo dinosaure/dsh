@@ -33,7 +33,7 @@ end
 let tests =
   [
     ("id", OK ("(forall (a) (a -> a))"));
-    ("one", OK ("int"));
+    ("1", OK ("int"));
     ("x", Fail (Synthesis.Unbound_variable "x"));
     ("(let (x x) x)", Fail (Synthesis.Unbound_variable "x"));
     ("(let (x id) x)", OK ("(forall (a) (a -> a))"));
@@ -55,9 +55,9 @@ let tests =
      OK ("bool"));
     ("(let (f (lambda (x) x)) (= f succ))",
      OK ("bool"));
-    ("(let (f (lambda (x) x)) [(f one), (f true)])",
+    ("(let (f (lambda (x) x)) [(f 1), (f true)])",
      OK ("(pair int bool)"));
-    ("(lambda (f) [(f one), (f true)])",
+    ("(lambda (f) [(f 1), (f true)])",
      Fail (Synthesis.Conflict (Type.Const "int", Type.Const "bool")));
     ("(let (f (lambda (x y) (let (a (= x y)) [x = y]))) f)",
      OK ("(forall (a) (a -> a -> bool))"));
@@ -69,9 +69,9 @@ let tests =
     ("(cons id nill)", OK ("(forall (a) (list (a -> a)))"));
     ("(let (l1 (cons id nill)) (let (l2 (cons succ nill)) l2))",
      OK ("(list (int -> int))"));
-    ("[one + true]",
+    ("[1 + true]",
      Fail (Synthesis.Conflict (Type.Const "int", Type.Const "bool")));
-    ("(+ one)",
+    ("(+ 1)",
      Fail (Synthesis.Mismatch_arguments
              (Type.Arrow ([Type.Const "int"; Type.Const "int"],
                           Type.Const "int"))));
@@ -94,7 +94,7 @@ let tests =
     ("(lambda (x) (x x))",
      Fail (Synthesis.Recursive_type
              (Type.Arrow ([ Variable.dummy ], Variable.dummy))));
-    ("(one id)",
+    ("(1 id)",
      Fail (Synthesis.Expected_function (Type.Const "int")));
     ("(lambda (f) (let (x (lambda (g y) (let (_ (g y)) (= f g)))) x))",
      OK ("(forall (a b) ((a -> b) -> (a -> b) -> a -> bool))"));
@@ -105,9 +105,9 @@ let tests =
     ("(let (apply (lambda (f) (lambda (x) (f x)))) apply)",
      OK ("(forall (a b) ((a -> b) -> a -> b))"));
     ("ids", OK "(list (forall (a) (a -> a)))");
-    ("(lambda (f) [(f one), (f true)])",
+    ("(lambda (f) [(f 1), (f true)])",
      Fail (Synthesis.Conflict (Type.Const "int", Type.Const "bool")));
-    ("(lambda (f : (forall (a) (a -> a))) [(f true), (f one)])",
+    ("(lambda (f : (forall (a) (a -> a))) [(f true), (f 1)])",
      OK ("(((forall (a) (a -> a))) -> (pair bool int))"));
     ("(cons ids nill)", OK ("(list (list (forall (a) (a -> a))))"));
     ("(choose ids nill)", OK ("(list (forall (a) (a -> a)))"));
@@ -121,7 +121,7 @@ let tests =
     ("(poly (lambda (x) x))", OK ("(pair int bool)"));
     ("(poly succ)",
      Fail (Synthesis.Conflict (Variable.dummy, Type.Const "int")));
-    ("(apply succ one)", OK ("int"));
+    ("(apply succ 1)", OK ("int"));
     ("(apply poly id)", OK ("(pair int bool)"));
     ("(id : (forall (a) (a -> a))) : (int -> int)", OK ("(int -> int)"));
     ("(single (id : (forall (a) (a -> a))))",
@@ -137,12 +137,12 @@ let tests =
     ("(poly (id id))", OK ("(pair int bool)"));
     ("(length (ids))", OK ("int"));
     ("(map head (single ids))", OK ("(list (forall (a) (a -> a)))"));
-    ("(apply id one)", OK ("int"));
+    ("(apply id 1)", OK ("int"));
     ("(poly magic)", OK ("(pair int bool)"));
     ("(magid magic)", OK ("(forall (a b) (a -> b))"));
     ("(lambda (f : (forall (a b) (a -> b))) (f : (forall (a) (a -> a))))",
      OK ("((forall (a b) (a -> b)) -> (forall (a) (a -> a)))"));
-    ("(lambda (f : (forall (a b) (a -> b))) (let (a (magid f)) one))",
+    ("(lambda (f : (forall (a b) (a -> b))) (let (a (magid f)) 1))",
      OK ("((forall (a b) (a -> b)) -> int)"));
     ("(let (const (any : (forall (a) (a -> (forall (b) (b -> a))))))
        (const any))"), OK ("(forall (a b) (a -> b))");

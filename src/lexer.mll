@@ -23,10 +23,11 @@ rule token = parse
   | "forall"                        { Parser.FORALL }
   | "some"                          { Parser.SOME }
   | "->"                            { Parser.ARROW }
-  | digit+ as n                     { Parser.NUMBER (int_of_string n) }
-  | name as n                       { Parser.NAME n }
   | "true"                          { Parser.BOOL true }
   | "false"                         { Parser.BOOL false }
+  | "if"                            { Parser.IF }
+  | digit+ as n                     { Parser.NUMBER (int_of_string n) }
+  | name as n                       { Parser.NAME n }
   | eof                             { Parser.EOF }
   | _                               { raise Lexical_error }
 
@@ -45,6 +46,7 @@ let string_of_token = function
   | Parser.FORALL -> "forall"
   | Parser.SOME -> "some"
   | Parser.ARROW -> "->"
+  | Parser.IF -> "if"
   | Parser.NAME n -> n
   | Parser.NUMBER n -> string_of_int n
   | Parser.BOOL b -> if b then "true" else "false"

@@ -5,6 +5,7 @@ type t =
   | Let of (Location.t * string * t * t)
   | Rec of (Location.t * string * t * t)
   | Ann of (Location.t * t * annotation)
+  | If of (Location.t * t * t * t)
   | Int of (Location.t * int)
   | Bool of (Location.t * bool)
 and annotation = (int list * Type.t)
@@ -71,6 +72,11 @@ let to_string tree =
       Printf.bprintf buffer "%a : %a"
         compute e
         Buffer.add_annotation ann
+    | If (_, i, a, b) ->
+      Printf.bprintf buffer "(if %a %a %a)"
+        compute i
+        compute a
+        compute b
     | Int (_, i) ->
       Printf.bprintf buffer "%d" i
     | Bool (_, b) ->

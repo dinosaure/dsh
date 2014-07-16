@@ -5,6 +5,7 @@ type t =
   | Let of (Location.t * string * t * t)
   | Rec of (Location.t * string * t * t)
   | Ann of (Location.t * t * annotation)
+  | If of (Location.t * t * t * t)
   | Int of (Location.t * int)
   | Bool of (Location.t * bool)
 and annotation = (int list * Type.t)

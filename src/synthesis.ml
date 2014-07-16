@@ -491,6 +491,15 @@ let rec eval env level = function
        subsume level ty e';
        ty
     ) >!= raise_with_loc loc
+  | Ast.If (loc, i, a, b) ->
+    (fun () ->
+       let i' = eval env level i in
+       let a' = eval env level a in
+       let b' = eval env level b in
+       unification i' (Type.Const "bool");
+       unification a' b';
+       a')
+    >!= raise_with_loc loc
   | Ast.Int _ -> Type.Const "int"
   | Ast.Bool _ -> Type.Const "bool"
 

@@ -46,7 +46,7 @@ let replace ids ty =
 %token <string> NAME
 %token <int> NUMBER
 %token <bool> BOOL
-%token DEFINE LET LAMBDA FORALL SOME REC
+%token DEFINE LET LAMBDA FORALL SOME REC IF
 %token LPAR RPAR LBRA RBRA
 %token ARROW COMMA
 %token EOF
@@ -103,6 +103,8 @@ expr:
   { Ast.App (Location.make $startpos $endpos, f, a) }
   | LBRA a = expr o = expr b = expr RBRA
   { Ast.App (Location.make $startpos $endpos, o, [a; b]) }
+  | LPAR IF i = expr a = expr b = expr RPAR
+  { Ast.If (Location.make $startpos $endpos, i, a, b) }
   | a = expr COMMA n = ann
   { Ast.Ann (Location.make $startpos $endpos, a, n) }
   | i = NUMBER
