@@ -43,6 +43,9 @@ let core =
   |> add "fst     : (forall (a b) ((pair a b) -> a))"
   |> add "snd     : (forall (a b) ((pair a b) -> b))"
 
+  |> add "#num    : (int -> unit)"
+  |> add "#bln    : (bool -> unit)"
+
   |> add "any     : (forall (a) a)"
   |> add "magic   : (forall (a b) (a -> b))"
   |> add "poly    : ((forall (a) (a -> a)) -> (pair int bool))"
@@ -79,6 +82,13 @@ let runtime =
   |> add ">=" (function [Int a; Int b] -> Bool (a >= b) | _ -> raise_error ">=")
   |> add "<=" (function [Int a; Int b] -> Bool (a <= b) | _ -> raise_error "<=")
   |> add "not" (function [Bool a] -> Bool (not a) | _ -> raise_error "not")
+
+  |> add "#num"
+    (function [Int a] -> print_int a; Unit
+            | _ -> raise_error "#num")
+  |> add "#bln"
+    (function [Bool b] -> print_string (if b then "true" else "false"); Unit
+            | _ -> raise_error "#num")
 
   |> add "and" (function [Bool a; Bool b] -> Bool (a && b)
                        | _ -> raise_error "and")
