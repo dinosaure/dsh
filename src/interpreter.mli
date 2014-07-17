@@ -7,6 +7,7 @@ end
 type t =
   | Int of int
   | Bool of bool
+  | Unit
   | Closure of (t Environment.t * string list * Ast.t * string option)
   | Primitive of (t list -> t)
 
@@ -19,4 +20,5 @@ val string_of_exn : exn -> string
 
 val to_string : t -> string
 
-val eval : ?env:(t Environment.t) -> Ast.t -> t
+val eval : t Environment.t -> Ast.t -> t
+val top : t Environment.t -> Ast.i list -> unit
