@@ -45,6 +45,7 @@ let core =
 
   |> add "#num    : (int -> unit)"
   |> add "#bln    : (bool -> unit)"
+  |> add "#chr    : (char -> unit)"
 
   |> add "any     : (forall (a) a)"
   |> add "magic   : (forall (a b) (a -> b))"
@@ -88,7 +89,10 @@ let runtime =
             | _ -> raise_error "#num")
   |> add "#bln"
     (function [Bool b] -> print_string (if b then "true" else "false"); Unit
-            | _ -> raise_error "#num")
+            | _ -> raise_error "#bln")
+  |> add "#chr"
+    (function [Char c] -> print_string (String.make 1 c); Unit
+            | _ -> raise_error "#chr")
 
   |> add "and" (function [Bool a; Bool b] -> Bool (a && b)
                        | _ -> raise_error "and")
