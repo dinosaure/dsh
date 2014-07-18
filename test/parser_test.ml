@@ -8,6 +8,10 @@ module Ast_without_loc = struct
     | Let of (string * t * t)
     | Rec of (string * t * t)
     | Ann of (t * annotation)
+    | If of (t * t * t)
+    | Int of int
+    | Bool of bool
+    | Char of char
   and annotation = (int list * Type.t)
 
   let rec to_ast = function
@@ -17,6 +21,10 @@ module Ast_without_loc = struct
     | Let (name, e, c) -> Ast.Let (Location.dummy, name, to_ast e, to_ast c)
     | Rec (name, e, c) -> Ast.Rec (Location.dummy, name, to_ast e, to_ast c)
     | Ann (e, ann) -> Ast.Ann (Location.dummy, to_ast e, ann)
+    | If (i, a, b) -> Ast.If (Location.dummy, to_ast i, to_ast a, to_ast b)
+    | Int i -> Ast.Int (Location.dummy, i)
+    | Bool b -> Ast.Bool (Location.dummy, b)
+    | Char c -> Ast.Char (Location.dummy, c)
 
   let rec of_ast = function
     | Ast.Var (_, name) -> Var name
@@ -25,6 +33,10 @@ module Ast_without_loc = struct
     | Ast.Let (_, name, e, c) -> Let (name, of_ast e, of_ast c)
     | Ast.Rec (_, name, e, c) -> Rec (name, of_ast e, of_ast c)
     | Ast.Ann (_, e, ann) -> Ann (of_ast e, ann)
+    | Ast.If (_, i, a, b) -> If (of_ast i, of_ast a, of_ast b)
+    | Ast.Int (_, i) -> Int i
+    | Ast.Bool (_, b) -> Bool b
+    | Ast.Char (_, c) -> Char c
 end
 
 type t =

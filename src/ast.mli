@@ -8,6 +8,7 @@ type t =
   | If of (Location.t * t * t * t)
   | Int of (Location.t * int)
   | Bool of (Location.t * bool)
+  | Char of (Location.t * char)
 and annotation = (int list * Type.t)
 
 type i =

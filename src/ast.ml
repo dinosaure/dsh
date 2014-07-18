@@ -8,6 +8,7 @@ type t =
   | If of (Location.t * t * t * t)
   | Int of (Location.t * int)
   | Bool of (Location.t * bool)
+  | Char of (Location.t * char)
 and annotation = (int list * Type.t)
 
 type i =
@@ -81,4 +82,6 @@ let to_string tree =
       Printf.bprintf buffer "%d" i
     | Bool (_, b) ->
       Printf.bprintf buffer "%s" (if b then "true" else "false")
+    | Char (_, c) ->
+      Printf.bprintf buffer "%c" c
   in compute buffer tree; Buffer.contents buffer

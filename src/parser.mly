@@ -46,6 +46,7 @@ let replace ids ty =
 %token <string> NAME
 %token <int> NUMBER
 %token <bool> BOOL
+%token <char> CHAR
 %token DEFINE LET LAMBDA FORALL SOME REC IF
 %token LPAR RPAR LBRA RBRA
 %token ARROW COMMA
@@ -111,6 +112,8 @@ expr:
   { Ast.Int (Location.make $startpos $endpos, i) }
   | b = BOOL
   { Ast.Bool (Location.make $startpos $endpos, b) }
+  | c = CHAR
+  { Ast.Char (Location.make $startpos $endpos, c) }
 
 param:
   | x = NAME

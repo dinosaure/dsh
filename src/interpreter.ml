@@ -10,6 +10,7 @@ end
 type t =
   | Int of int
   | Bool of bool
+  | Char of char
   | Unit
   | Closure of (t Environment.t * string list * Ast.t * string option)
   | Primitive of (t list -> t)
@@ -33,6 +34,7 @@ let rec string_of_exn = function
 let to_string = function
   | Int i -> string_of_int i
   | Bool b -> if b then "true" else "false"
+  | Char c -> String.make 1 c
   | Unit -> "()"
   | Closure _ -> "#closure"
   | Primitive _ -> "#primitive"
@@ -88,6 +90,7 @@ let rec eval env = function
     eval env expr
   | Ast.Int (_, value) -> Int value
   | Ast.Bool (_, value) -> Bool value
+  | Ast.Char (_, value) -> Char value
 
 let top env lst =
   let rec aux env = function

@@ -502,6 +502,7 @@ let rec eval env level = function
     >!= raise_with_loc loc
   | Ast.Int _ -> Type.Const "int"
   | Ast.Bool _ -> Type.Const "bool"
+  | Ast.Char _ -> Type.Const "char"
 
 (** compute_argument : after infering the type of argument, we use the function
  * [subsume] (or [unification] if the argument is annotated) to determine if the
