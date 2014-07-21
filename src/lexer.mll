@@ -36,6 +36,7 @@ rule token = parse
   | '['                                   { Parser.LBRA }
   | ']'                                   { Parser.RBRA }
   | ':'                                   { Parser.COMMA }
+  | ';'                                   { Parser.SEMICOLON }
   | "lambda"                              { Parser.LAMBDA }
   | "let"                                 { Parser.LET }
   | "rec"                                 { Parser.REC }
@@ -61,6 +62,7 @@ let string_of_token = function
   | Parser.LBRA -> "["
   | Parser.RBRA -> "]"
   | Parser.COMMA -> ":"
+  | Parser.SEMICOLON -> ";"
   | Parser.LET -> "let"
   | Parser.REC -> "rec"
   | Parser.LAMBDA -> "lambda"

@@ -50,7 +50,7 @@ let replace ids ty =
 %token <char> CHAR
 %token LET LAMBDA FORALL SOME REC IF
 %token LPAR RPAR LBRA RBRA
-%token ARROW COMMA
+%token ARROW COMMA SEMICOLON
 %token EOF
 
 %start single_expr
@@ -111,6 +111,8 @@ expr:
   { Ast.If (Location.make $startpos $endpos, i, a, b) }
   | a = expr COMMA n = ann
   { Ast.Ann (Location.make $startpos $endpos, a, n) }
+  | LBRA a = expr SEMICOLON b = expr RBRA
+  { Ast.Seq (Location.make $startpos $endpos, a, b) }
   | i = NUMBER
   { Ast.Int (Location.make $startpos $endpos, i) }
   | b = BOOL
