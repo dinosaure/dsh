@@ -80,6 +80,10 @@ let to_string tree =
         compute i
         compute a
         compute b
+    | Seq (_, a, b) ->
+      Printf.bprintf buffer "[%a; %a]"
+        compute a
+        compute b
     | Int (_, i) ->
       Printf.bprintf buffer "%d" i
     | Bool (_, b) ->
