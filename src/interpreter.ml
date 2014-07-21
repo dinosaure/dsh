@@ -61,6 +61,11 @@ let rec eval env = function
            | Bool false -> eval env b
            | _ -> raise Expected_boolean)
     ) >!= raise_with_loc loc
+  | Ast.Seq (loc, a, b) ->
+    (fun () ->
+      let _ = eval env a in
+      eval env b
+    ) >!= raise_with_loc loc
   | Ast.App (loc, f, a) ->
     (fun () ->
        let a = List.map (eval env) a in
@@ -91,6 +96,7 @@ let rec eval env = function
   | Ast.Int (_, value) -> Int value
   | Ast.Bool (_, value) -> Bool value
   | Ast.Char (_, value) -> Char value
+  | Ast.Unit _ -> Unit
 
 let top env lst =
   let rec aux env = function

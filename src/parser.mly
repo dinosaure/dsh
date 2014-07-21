@@ -41,13 +41,14 @@ let replace ids ty =
       Forall (ids, aux ty)
   in (List.rev !lst, aux ty)
 
+
 %}
 
 %token <string> NAME
 %token <int> NUMBER
 %token <bool> BOOL
 %token <char> CHAR
-%token DEFINE LET LAMBDA FORALL SOME REC IF
+%token LET LAMBDA FORALL SOME REC IF
 %token LPAR RPAR LBRA RBRA
 %token ARROW COMMA
 %token EOF
@@ -59,7 +60,7 @@ let replace ids ty =
 %type <Type.t> single_ty
 
 %start exprs
-%type <Ast.i list> exprs
+%type <Ast.t> exprs
 
 %%
 
@@ -74,12 +75,14 @@ alist(C, X):
   { ([ x ], y) }
 
 exprs:
-  | LPAR DEFINE n = NAME e = expr RPAR r = exprs
-  { Ast.Def (Location.make $startpos $endpos($5), n, e) :: r }
+  | LPAR LET n = NAME e = expr RPAR r = exprs
+  { Ast.Let (Location.make $startpos $endpos($5), n, e, r) }
+  | LPAR REC n = NAME e = expr RPAR r = exprs
+  { Ast.Rec (Location.make $startpos $endpos($5), n, e, r) }
   | e = expr r = exprs
-  { Ast.Expr (Location.make $startpos $endpos(e), e) :: r }
+  { Ast.Seq (Location.make $startpos $endpos(e), e, r) }
   | EOF
-  { [] }
+  { Ast.Unit (Location.make $startpos $endpos) }
 
 single_expr:
   | a = expr EOF

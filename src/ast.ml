@@ -6,6 +6,8 @@ type t =
   | Rec of (Location.t * string * t * t)
   | Ann of (Location.t * t * annotation)
   | If of (Location.t * t * t * t)
+  | Seq of (Location.t * t * t)
+  | Unit of Location.t
   | Int of (Location.t * int)
   | Bool of (Location.t * bool)
   | Char of (Location.t * char)
@@ -84,4 +86,5 @@ let to_string tree =
       Printf.bprintf buffer "%s" (if b then "true" else "false")
     | Char (_, c) ->
       Printf.bprintf buffer "%c" c
+    | Unit _ -> Buffer.add_string buffer "()"
   in compute buffer tree; Buffer.contents buffer

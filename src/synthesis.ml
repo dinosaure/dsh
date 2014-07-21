@@ -500,9 +500,17 @@ let rec eval env level = function
        unification a' b';
        a')
     >!= raise_with_loc loc
+  | Ast.Seq (loc, a, b) ->
+    (fun () ->
+      let a' = eval env level a in
+      let b' = eval env level b in
+      unification a' (Type.Const "unit");
+      b')
+    >!= raise_with_loc loc
   | Ast.Int _ -> Type.Const "int"
   | Ast.Bool _ -> Type.Const "bool"
   | Ast.Char _ -> Type.Const "char"
+  | Ast.Unit _ -> Type.Const "unit"
 
 (** compute_argument : after infering the type of argument, we use the function
  * [subsume] (or [unification] if the argument is annotated) to determine if the

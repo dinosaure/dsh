@@ -41,7 +41,8 @@ let rec file inch filename =
   let lexbuf = Lexing.from_channel inch in
   try
     let tree = Parser.exprs Lexer.token lexbuf in
-    Interpreter.top Core.runtime tree
+    let _ = Interpreter.eval Core.runtime tree in
+    ()
   with
   | Parser.Error ->
     let loc = Location.make
