@@ -4,8 +4,7 @@ let interpret expr =
     let tree = Parser.single_expr Lexer.token lexbuf in
     let ty = Synthesis.eval Core.core 0 tree in
     let rt = Interpreter.eval Core.runtime tree in
-    Printf.printf ": %s\n%!" (Type.to_string ty);
-    Printf.printf "> %s\n%!" (Interpreter.to_string rt);
+    Printf.printf "%s : %s\n%!" (Interpreter.to_string rt) (Type.to_string ty);
   with
   | Parser.Error ->
     Printf.printf "Parsing error at:\n%s%!"

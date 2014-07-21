@@ -7,15 +7,15 @@ License:                 MIT
 Plugins:                 META (0.4), DevFiles (0.4)
 BuildTools:              ocamlbuild
 
-Library dscheme
+Library dsh
   Path:                  src
   Modules:               Location, Lexer, Parser, Ast, Type, Synthesis, Core,
                          Interpreter
 
-Executable dscheme
+Executable dsh
   Path:                  bin
-  MainIs:                dscheme.ml
-  BuildDepends:          dscheme
+  MainIs:                dsh.ml
+  BuildDepends:          dsh
 
 ## Test ##
 
@@ -25,7 +25,7 @@ Executable test_parser
   Install:               false
   CompiledObject:        best
   MainIs:                parser_test.ml
-  BuildDepends:          dscheme, oUnit
+  BuildDepends:          dsh, oUnit
 
 Test test_parser
   Run$:                  flag(tests)
@@ -39,7 +39,7 @@ Executable test_lexer
   Install:               false
   CompiledObject:        best
   MainIs:                lexer_test.ml
-  BuildDepends:          dscheme, oUnit
+  BuildDepends:          dsh, oUnit
 
 Test test_lexer
   Run$:                  flag(tests)
@@ -53,7 +53,7 @@ Executable test_type
   Install:               false
   CompiledObject:        best
   MainIs:                type_test.ml
-  BuildDepends:          dscheme, oUnit
+  BuildDepends:          dsh, oUnit
 
 Test test_type
   Run$:                  flag(tests)
