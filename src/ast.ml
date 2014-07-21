@@ -44,6 +44,20 @@ module Buffer = struct
     | None -> add_string buffer name
 end
 
+let loc = function
+  | Var (loc, _) -> loc
+  | App (loc, _, _) -> loc
+  | Abs (loc, _, _) -> loc
+  | Let (loc, _, _, _) -> loc
+  | Rec (loc, _, _, _) -> loc
+  | Ann (loc, _, _) -> loc
+  | If (loc, _, _, _) -> loc
+  | Seq (loc, _, _) -> loc
+  | Unit loc -> loc
+  | Int (loc, _) -> loc
+  | Bool (loc, _) -> loc
+  | Char (loc, _) -> loc
+
 let rec is_annotated = function
   | Ann (_, _, _) -> true
   | Let (_, _, _, c) -> is_annotated c

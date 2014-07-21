@@ -17,6 +17,7 @@ type i =
   | Def of (Location.t * string * t)
   | Expr of (Location.t * t)
 
+val loc : t -> Location.t
 val is_annotated : t -> bool
 
 val to_string : t -> string
