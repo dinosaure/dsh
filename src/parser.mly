@@ -41,6 +41,16 @@ let replace ids ty =
       Forall (ids, aux ty)
   in (List.rev !lst, aux ty)
 
+let reduce (lst, stop) startpos endpos =
+  let rec aux = function
+    | [] -> stop
+    | [ x ] ->
+      Ast.Seq (Ast.loc x, x, stop)
+    | x :: r ->
+      let start = Ast.loc x |> Location.start in
+      let stop = Ast.loc (List.rev r |> List.hd) |> Location.stop in
+      Ast.Seq (Location.compose start stop, x, aux r)
+  in aux lst
 
 %}
 
@@ -111,8 +121,8 @@ expr:
   { Ast.If (Location.make $startpos $endpos, i, a, b) }
   | a = expr COMMA n = ann
   { Ast.Ann (Location.make $startpos $endpos, a, n) }
-  | LBRA a = expr SEMICOLON b = expr RBRA
-  { Ast.Seq (Location.make $startpos $endpos, a, b) }
+  | LBRA lst = alist(SEMICOLON, expr) RBRA
+  { reduce lst $startpos $endpos }
   | i = NUMBER
   { Ast.Int (Location.make $startpos $endpos, i) }
   | b = BOOL
