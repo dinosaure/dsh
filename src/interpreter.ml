@@ -97,12 +97,3 @@ let rec eval env = function
   | Ast.Bool (_, value) -> Bool value
   | Ast.Char (_, value) -> Char value
   | Ast.Unit _ -> Unit
-
-let top env lst =
-  let rec aux env = function
-    | [] -> ()
-    | Ast.Def (_, name, expr) :: r ->
-      aux (Environment.add name (eval env expr) env) r
-    | Ast.Expr (_, expr) :: r ->
-      let _ = eval env expr in aux env r
-  in aux env lst

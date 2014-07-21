@@ -13,10 +13,6 @@ type t =
   | Char of (Location.t * char)
 and annotation = (int list * Type.t)
 
-type i =
-  | Def of (Location.t * string * t)
-  | Expr of (Location.t * t)
-
 val loc : t -> Location.t
 val is_annotated : t -> bool
 

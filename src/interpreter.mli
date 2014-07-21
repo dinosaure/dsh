@@ -22,4 +22,3 @@ val string_of_exn : exn -> string
 val to_string : t -> string
 
 val eval : t Environment.t -> Ast.t -> t
-val top : t Environment.t -> Ast.i list -> unit
