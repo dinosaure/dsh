@@ -71,6 +71,11 @@ let rec file inch filename =
       (Location.to_string_of_file loc filename)
 
 let () =
-  if Array.length Sys.argv = 2
-  then file (open_in Sys.argv.(1)) Sys.argv.(1)
-  else repl ()
+  Printexc.record_backtrace true;
+  try
+    if Array.length Sys.argv = 2
+    then file (open_in Sys.argv.(1)) Sys.argv.(1)
+    else repl ()
+  with exn ->
+    Printf.fprintf stderr "E: %s\n" (Printexc.to_string exn);
+    Printexc.print_backtrace stderr
