@@ -79,8 +79,8 @@ let tests =
     ("((let) (a one) a)", Fail);
     ("(let (a one) a)",
      OK (Let ("a", Var "one", Var "a")));
-    ("()", Fail);
-    ("(id x))", Fail)
+    ("()", OK Unit);
+    ("(id x))", Fail);
   ]
 
 let to_string = function
