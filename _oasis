@@ -11,6 +11,7 @@ Library dsh
   Path:                  src
   Modules:               Location, Lexer, Parser, Ast, Type, Synthesis, Core,
                          Interpreter
+  BuildDepends:          batteries
 
 Executable dsh
   Path:                  bin

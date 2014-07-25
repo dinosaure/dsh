@@ -1,7 +1,8 @@
 # OASIS_START
-# DO NOT EDIT (digest: 90928f50ef063b05252a9b6eae6744ad)
+# DO NOT EDIT (digest: 0017aabeddb834bcb2d77d7d78dbffe3)
 version = "0.1"
 description = "Typed Scheme"
+requires = "batteries"
 archive(byte) = "dsh.cma"
 archive(byte, plugin) = "dsh.cma"
 archive(native) = "dsh.cmxa"
