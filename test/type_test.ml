@@ -131,9 +131,9 @@ let tests =
      OK ("((forall (a) (a -> a)) -> (forall (a) (a -> a)))"));
     ("(lambda (x : (forall (a) (a -> a))) x)",
      OK ("(forall (a) ((forall (b) (b -> b)) -> a -> a))"));
-    ("(id_ id)", OK ("(forall (a) (a -> a))"));
-    ("(id__ id)", OK ("(forall (a) (a -> a))"));
-    ("(lambda (ids) (ids_ ids))", Unsafe);
+    ("(id' id)", OK ("(forall (a) (a -> a))"));
+    ("(id'' id)", OK ("(forall (a) (a -> a))"));
+    ("(lambda (ids) (ids' ids))", Unsafe);
     ("(poly (id id))", OK ("(pair int bool)"));
     ("(length (ids))", OK ("int"));
     ("(map head (single ids))", OK ("(list (forall (a) (a -> a)))"));
@@ -155,6 +155,23 @@ let tests =
                    (if (empty l) a
                     (f (head l) (foldr f (tail l) a))))) foldr)",
      OK ("(forall (a b) ((a -> b -> b) -> (list a) -> b -> b))"));
+    ("(rec (foldl (lambda (f a l)
+                   (if (empty l) a
+                    (foldl f (f a (head l)) (tail l)))))
+           (lambda (l) (foldl (lambda (a x) [a + 1]) 0 l)))",
+     OK ("(forall (a) ((list a) -> int))"));
+    ("(rec (iter (lambda (f l)
+                  (if (empty l) ()
+                   [(f (head l)); (iter f (tail l))])))
+       iter)",
+     OK ("(forall (a) ((a -> unit) -> (list a) -> unit))"));
+    ("(let (iter (rec (foldl (lambda (f a l)
+                   (if (empty l) a
+                    (foldl f (f a (head l)) (tail l)))))
+                 (lambda (f l) (foldl (lambda (a x) (f x)) () l))))
+           (lambda (l) (iter #num l)))",
+     OK ("((list int) -> unit)"));
+
   ]
 
 let to_string = function
