@@ -46,6 +46,7 @@ rule token = parse
   | "true"                                { Parser.BOOL true }
   | "false"                               { Parser.BOOL false }
   | "if"                                  { Parser.IF }
+  | "type"                                { Parser.TYPE }
   | "'" '\\' (hexa as a) (hexa as b) "'"  { Parser.CHAR (char_of_hexa a b) }
   | "'" '\\' (special as c) "'"           { Parser.CHAR (char_of_backslash c) }
   | "'" ([^ '\\'] as c) "'"               { Parser.CHAR c }
@@ -70,6 +71,7 @@ let string_of_token = function
   | Parser.SOME -> "some"
   | Parser.ARROW -> "->"
   | Parser.IF -> "if"
+  | Parser.TYPE -> "type"
   | Parser.NAME n -> n
   | Parser.NUMBER n -> string_of_int n
   | Parser.BOOL b -> if b then "true" else "false"

@@ -58,7 +58,7 @@ let reduce (lst, stop) startpos endpos =
 %token <int> NUMBER
 %token <bool> BOOL
 %token <char> CHAR
-%token LET LAMBDA FORALL SOME REC IF
+%token LET LAMBDA FORALL SOME REC IF TYPE
 %token LPAR RPAR LBRA RBRA
 %token ARROW COMMA SEMICOLON
 %token EOF
@@ -85,6 +85,8 @@ alist(C, X):
   { ([ x ], y) }
 
 exprs:
+  | LPAR TYPE n = NAME t = ty RPAR r = exprs
+  { Ast.Alias (Location.make $startpos $endpos, n, t, r) }
   | LPAR LET n = NAME e = expr RPAR r = exprs
   { Ast.Let (Location.make $startpos $endpos($5), n, e, r) }
   | LPAR REC n = NAME e = expr RPAR r = exprs
@@ -129,6 +131,8 @@ expr:
   { Ast.Bool (Location.make $startpos $endpos, b) }
   | c = CHAR
   { Ast.Char (Location.make $startpos $endpos, c) }
+  | LPAR TYPE n = NAME t = ty e = expr RPAR
+  { Ast.Alias (Location.make $startpos $endpos, n, t, e) }
 
 param:
   | x = NAME

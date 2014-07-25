@@ -11,6 +11,7 @@ type t =
   | Int of (Location.t * int)
   | Bool of (Location.t * bool)
   | Char of (Location.t * char)
+  | Alias of (Location.t * string * Type.t * t)
 and annotation = (int list * Type.t)
 
 module Buffer = struct
@@ -40,6 +41,16 @@ module Buffer = struct
     | None -> add_string buffer name
 end
 
+module List = struct
+  include List
+
+  let rec make f n =
+    let rec aux acc = function
+      | 0 -> List.rev acc
+      | n -> aux (f n :: acc) (n - 1)
+    in aux [] n
+end
+
 let loc = function
   | Var (loc, _) -> loc
   | App (loc, _, _) -> loc
@@ -53,6 +64,7 @@ let loc = function
   | Int (loc, _) -> loc
   | Bool (loc, _) -> loc
   | Char (loc, _) -> loc
+  | Alias (loc, _, _, _) -> loc
 
 let rec is_annotated = function
   | Ann (_, _, _) -> true
@@ -101,4 +113,9 @@ let to_string tree =
     | Char (_, c) ->
       Printf.bprintf buffer "%c" c
     | Unit _ -> Buffer.add_string buffer "()"
+    | Alias (_, name, ty, expr) ->
+      Printf.bprintf buffer "(type %s %s %a)"
+        name
+        (Type.to_string ty)
+        compute expr
   in compute buffer tree; Buffer.contents buffer

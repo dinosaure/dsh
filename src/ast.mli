@@ -11,6 +11,7 @@ type t =
   | Int of (Location.t * int)
   | Bool of (Location.t * bool)
   | Char of (Location.t * char)
+  | Alias of (Location.t * string * Type.t * t)
 and annotation = (int list * Type.t)
 
 val loc : t -> Location.t
