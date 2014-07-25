@@ -52,10 +52,10 @@ let core =
   |> add "poly    : ((forall (a) (a -> a)) -> (pair int bool))"
   |> add "special : (((forall (a) (a -> a)) -> (forall (a) (a -> a)))
                      -> (forall (a) (a -> a)))"
-  |> add "id_     : ((forall (a) (a -> a)) -> (forall (a) (a -> a)))"
-  |> add "id__    : (forall (a) ((forall (a) (a -> a)) -> (a -> a)))"
+  |> add "id'     : ((forall (a) (a -> a)) -> (forall (a) (a -> a)))"
+  |> add "id''    : (forall (a) ((forall (a) (a -> a)) -> (a -> a)))"
   |> add "ids     : (list (forall (a) (a -> a)))"
-  |> add "ids_    : ((list (forall (a) (a -> a)))
+  |> add "ids'    : ((list (forall (a) (a -> a)))
                      -> (list (forall (a) (a -> a))))"
   |> add "magid   : ((forall (a b) (a -> b)) -> (forall (a b) (a -> b)))"
 
