@@ -98,3 +98,8 @@ let runtime =
                        | _ -> raise_error "and")
   |> add "or" (function [Bool a; Bool b] -> Bool (a || b)
                       | _ -> raise_error "or")
+
+  |> add "," (function l -> Tuple l)
+  |> add "fst" (function [Tuple l] -> List.hd l | _ -> raise_error "fst")
+  |> add "snd" (function [Tuple l] -> List.tl l |> List.hd
+                       | _ -> raise_error "snd")

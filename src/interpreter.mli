@@ -8,6 +8,7 @@ type t =
   | Int of int
   | Bool of bool
   | Char of char
+  | Tuple of t list
   | Unit
   | Closure of (t Environment.t * string list * Ast.t * string option)
   | Primitive of (t list -> t)

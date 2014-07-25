@@ -7,10 +7,23 @@ module Environment = struct
       env (List.combine names values)
 end
 
+module String = struct
+  include String
+
+  let of_list ?(sep="") to_string lst =
+    let buffer = Buffer.create 16 in
+    let rec aux = function
+      | [] -> ()
+      | [ x ] -> Printf.bprintf buffer "%s" (to_string x)
+      | x :: r -> Printf.bprintf buffer "%s%s" (to_string x) sep; aux r
+    in aux lst; Buffer.contents buffer
+end
+
 type t =
   | Int of int
   | Bool of bool
   | Char of char
+  | Tuple of t list
   | Unit
   | Closure of (t Environment.t * string list * Ast.t * string option)
   | Primitive of (t list -> t)
@@ -31,10 +44,12 @@ let rec string_of_exn = function
     raise (Invalid_argument ("Interpreter.string_of_exn: "
                              ^ (Printexc.to_string exn)))
 
-let to_string = function
+let rec to_string = function
   | Int i -> string_of_int i
   | Bool b -> if b then "true" else "false"
   | Char c -> String.make 1 c
+  | Tuple l ->
+    Printf.sprintf "(%s)" (String.of_list ~sep:", " to_string l)
   | Unit -> "()"
   | Closure _ -> "#closure"
   | Primitive _ -> "#primitive"
@@ -51,21 +66,21 @@ let rec eval env = function
   | Ast.Var (loc, name) ->
     (fun () ->
        try Environment.find name env
-       with Not_found -> raise (Unbound_variable name)
-    ) >!= raise_with_loc loc
+       with Not_found -> raise (Unbound_variable name))
+    >!= raise_with_loc loc
   | Ast.If (loc, i, a, b) ->
     (fun () ->
        eval env i
        |> (function
            | Bool true -> eval env a
            | Bool false -> eval env b
-           | _ -> raise Expected_boolean)
-    ) >!= raise_with_loc loc
+           | _ -> raise Expected_boolean))
+    >!= raise_with_loc loc
   | Ast.Seq (loc, a, b) ->
     (fun () ->
-      let _ = eval env a in
-      eval env b
-    ) >!= raise_with_loc loc
+       let _ = eval env a in
+       eval env b)
+    >!= raise_with_loc loc
   | Ast.App (loc, f, a) ->
     (fun () ->
        let a = List.map (eval env) a in
@@ -76,8 +91,8 @@ let rec eval env = function
            | Closure (ext, names, body, Some fix) as closure ->
              eval (Environment.extend ext (fix :: names) (closure :: a)) body
            | Primitive func -> func a
-           | _ -> raise Expected_function)
-    ) >!= raise_with_loc loc
+           | _ -> raise Expected_function))
+    >!= raise_with_loc loc
   | Ast.Abs (loc, a, c) ->
     Closure (env, List.map (fun (name, _) -> name) a, c, None)
   | Ast.Let (loc, name, value, expr) ->
@@ -89,11 +104,12 @@ let rec eval env = function
            | Closure (env', args, body, None) ->
              Closure (env', args, body, Some name)
            | x -> x)
-       |> fun value -> eval (Environment.add name value env) expr
-    ) >!= raise_with_loc loc
+       |> fun value -> eval (Environment.add name value env) expr)
+    >!= raise_with_loc loc
   | Ast.Ann (_, expr, _) ->
     eval env expr
   | Ast.Int (_, value) -> Int value
   | Ast.Bool (_, value) -> Bool value
   | Ast.Char (_, value) -> Char value
   | Ast.Unit _ -> Unit
+  | Ast.Alias (_, _, _, expr) -> eval env expr
