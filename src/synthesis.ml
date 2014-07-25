@@ -5,6 +5,10 @@ module Environment = struct
   let lookup env name = find name env
 end
 
+module Definition = struct
+  include Map.Make (String)
+end
+
 module Variable : sig
   val next : unit -> int
   val reset : unit -> unit
@@ -58,6 +62,7 @@ exception Unbound_variable of string
 exception Variable_no_instantiated
 exception Polymorphic_argument_inferred of Type.t list
 exception No_instance of (Type.t * Type.t)
+exception Unknown_type of string
 exception Error of (Location.t * exn)
 
 let rec string_of_exn = function
@@ -83,6 +88,8 @@ let rec string_of_exn = function
     ^ (String.concat " or " (List.map Type.to_string lst))
   | No_instance (a, b) ->
     (Type.to_string a) ^ " is not an instance of " ^ (Type.to_string b)
+  | Unknown_type name ->
+    ("unknown type " ^ name)
   | Error (loc, exn) ->
     Printf.sprintf "%s at %s" (string_of_exn exn) (Location.to_string loc)
   | exn ->
@@ -184,6 +191,30 @@ let union lst ty1 ty2 =
   List.exists
     (fun var -> Set.mem set1 var || Set.mem set2 var) lst
 
+let rec normalize ~def = function
+  | Type.Const name ->
+    begin
+      try (true, Definition.find name def |> Type.copy)
+      with Not_found -> (false, Type.Const name)
+    end
+  | Type.App (f, a) ->
+    let (s, f) = normalize ~def f in
+    let lst = List.map (normalize ~def) a in
+    (s || List.fold_left (fun a x -> a || fst x) false lst,
+     Type.App (f, List.map snd lst))
+  | Type.Arrow (a, r) ->
+    let lst = List.map (normalize ~def) a in
+    let (s, r) = normalize ~def r in
+    (List.fold_left (fun a x -> a || fst x) false lst || s,
+     Type.Arrow (List.map snd lst, r))
+  | Type.Var ({ contents = Type.Link t } as var) ->
+    let (s, v) = normalize ~def t in
+    var := Type.Link v; (s, Type.Var var)
+  | Type.Forall (lst, ty) ->
+    let (s, ty) = normalize ~def ty in
+    (s, Type.Forall (lst, ty))
+  | ty -> (false, ty)
+
 (** unification : takes two types and tries to them, i.e. determine if they can
  * be equal. Type constants unify with identical type contents, and arrow types
  * and other structured types are unified by unifying each of their components.
@@ -203,25 +234,25 @@ let union lst ty1 ty2 =
  * normally impossible after a substitution by `Forall` normalized expression.
 *)
 
-let rec unification t1 t2 =
+let rec unification ?(def = Definition.empty) t1 t2 =
   if t1 == t2 then ()
   else match t1, t2 with
     | Type.Const n1, Type.Const n2 when n1 = n2 -> ()
     | Type.App (t1, a1), Type.App (t2, a2) ->
-      unification t1 t2;
+      unification ~def t1 t2;
       begin
-        try List.iter2 unification a1 a2
+        try List.iter2 (unification ~def) a1 a2
         with Invalid_argument "List.iter2" -> raise (Conflict (t1, t2))
       end
     | Type.Arrow (a1, r1), Type.Arrow (a2, r2) ->
       begin
-        try List.iter2 unification a1 a2
+        try List.iter2 (unification ~def) a1 a2
         with Invalid_argument "List.iter2" -> raise (Conflict (t1, t2))
       end;
-      unification r1 r2
+      (unification ~def) r1 r2
     | Type.Var { contents = Type.Link t1 }, t2
     | t1, Type.Var { contents = Type.Link t2 } ->
-      unification t1 t2
+      (unification ~def) t1 t2
     | Type.Var { contents = Type.Generic id1 },
       Type.Var { contents = Type.Generic id2 }
     | Type.Var { contents = Type.Unbound (id1, _ ) },
@@ -255,12 +286,17 @@ let rec unification t1 t2 =
         try List.rev_map2 (fun _ _ -> Variable.generic ()) ids1 ids2
         with Invalid_argument "List.rev_map2" -> raise (Conflict (ty1, ty2))
       in
-      let ty1 = substitution ids1 lst ty1 in
-      let ty2 = substitution ids2 lst ty2 in
-      unification ty1 ty2;
+      let ty1 = substitution ids1 lst (normalize ~def ty1 |> snd) in
+      let ty2 = substitution ids2 lst (normalize ~def ty2 |> snd) in
+      (unification ~def) ty1 ty2;
       if union lst forall1 forall2
       then raise (Conflict (forall1, forall2))
-    | _, _ -> raise (Conflict (t1, t2))
+    | ty1, ty2 ->
+      let (s1, ty1) = normalize ~def ty1 in
+      let (s2, ty2) = normalize ~def ty2 in
+      if s1 || s2
+      then unification ~def ty1 ty2
+      else raise (Conflict (t1, t2))
 
 (*
 let rec generalization level = function
@@ -305,20 +341,24 @@ let specialization level ty =
  * @param ty type to apply modification
 *)
 
-let rec specialization level = function
-  | Type.Forall (ids, ty) ->
-    let lst = List.rev_map (fun _ -> Variable.make level) ids in
-    substitution ids lst ty
-  | Type.Var { contents = Type.Link ty } -> specialization level ty
-  | ty -> ty
+let specialization level ty =
+  let rec aux level = function
+    | Type.Forall (ids, ty) ->
+      let lst = List.rev_map (fun _ -> Variable.make level) ids in
+      substitution ids lst ty
+    | Type.Var { contents = Type.Link ty } -> aux level ty
+    | ty -> ty
+  in aux level ty
 
 (** specialization_annotation : same as specialization but for annotation *)
 
-let specialization_annotation level = function
-  | [], ty -> [], ty
-  | ids, ty ->
-    let lst = List.rev_map (fun _ -> Variable.make level) ids in
-    lst, substitution ids lst ty
+let specialization_annotation level (lst, ty) =
+  let aux = function
+    | [], ty -> [], ty
+    | ids, ty ->
+      let lst = List.rev_map (fun _ -> Variable.make level) ids in
+      lst, substitution ids lst ty
+  in aux (lst, ty)
 
 (** generalization : transforms a type into a `Forall` type by substituting all
  * `Unbound` type variables, with levels higher then the [level] with `Bound`
@@ -386,16 +426,16 @@ let rec compute_function n = function
  * @raise No_instance if [ty1] is not an instance of [ty2]
 *)
 
-let subsume level ty1 ty2 =
+let subsume ~def ~level ty1 ty2 =
   let ty2' = specialization level ty2 in
   match Type.unlink ty1 with
   | Type.Forall (ids, ty1) as forall ->
     let lst = List.rev_map (fun _ -> Variable.generic ()) ids in
     let ty1' = substitution ids lst ty1 in
-    unification ty1' ty2';
+    unification ~def ty1' ty2';
     if union lst forall ty2
     then raise (No_instance (ty1, ty2))
-  | ty1 -> unification ty1 ty2'
+  | ty1 -> unification ~def ty1 ty2'
 
 let ( >!= ) func handle_error =
   try func () with
@@ -405,12 +445,15 @@ let raise_with_loc loc = function
   | Error (loc, exn) as error -> raise error
   | exn -> raise (Error (loc, exn))
 
-let rec eval env level = function
+let rec eval
+    ?(def = Definition.empty)
+    ?(env = Environment.empty)
+    ?(level = 0) = function
   | Ast.Var (loc, name) ->
     (fun () ->
        try Environment.lookup env name
-       with Not_found -> raise (Unbound_variable name)
-    ) >!= raise_with_loc loc
+       with Not_found -> raise (Unbound_variable name))
+    >!= raise_with_loc loc
   | Ast.Abs (loc, a, c) ->
 
     (** To infer the type of functions, we first extend the environment with the
@@ -426,29 +469,38 @@ let rec eval env level = function
      * @raise Polymorphic_argument_inferred if a parameter has been unified
      * with polymorphic type
     *)
+
     (fun () ->
        let refenv = ref env in
        let lstvar = ref [] in
        let a' = List.map (fun (name, ann) ->
-           let ty = match ann with
+           let (ty_normalized, ty) = match ann with
              | None ->
                let var = Variable.make (level + 1) in
                lstvar := var :: !lstvar;
-               var
-             | Some ann ->
-               let vars, ty = specialization_annotation (level + 1) ann in
+               (None, var)
+             | Some (lst, ty) ->
+               let _, ty_normalized = normalize ~def ty in
+               let vars, ty_normalized = specialization_annotation
+                   (level + 1)
+                   (lst, ty_normalized) in
                lstvar := vars @ !lstvar;
-               ty
-           in refenv := Environment.extend !refenv name ty; ty) a
+               (Some ty_normalized, ty)
+           in refenv := begin
+             match ty_normalized with
+             | None -> Environment.extend !refenv name ty
+             | Some ty_normalized ->
+               Environment.extend !refenv name ty_normalized
+           end; ty) a
        in
-       let r' = eval !refenv (level + 1) c in
+       let r' = eval ~def ~env:!refenv ~level:(level + 1) c in
        let r' =
          if Ast.is_annotated c then r'
          else specialization (level + 1) r' in
        if not (List.for_all Type.is_monomorphic !lstvar)
        then raise (Polymorphic_argument_inferred !lstvar)
-       else generalization level (Type.Arrow (a', r'))
-    ) >!= raise_with_loc loc
+       else generalization level (Type.Arrow (a', r')))
+    >!= raise_with_loc loc
   | Ast.App (loc, f, a) ->
 
     (** To infer the type of function application we first infer the type of the
@@ -460,25 +512,33 @@ let rec eval env level = function
     *)
 
     (fun () ->
-       let f' = specialization (level + 1) (eval env (level + 1) f) in
+       let f' = eval ~def ~env ~level:(level + 1) f in
+       let f' = normalize ~def f' |> snd in
+       let f' = specialization (level + 1) f' in
        let a', r' = compute_function (List.length a) f' in
-       compute_argument env (level + 1) a' a;
-       generalization level (specialization (level + 1) r')
-    ) >!= raise_with_loc loc
+       compute_argument def env (level + 1) a' a;
+       generalization level (specialization (level + 1) r'))
+    >!= raise_with_loc loc
   | Ast.Let (loc, n, e, c) ->
     (fun () ->
-       let e' = eval env (level + 1) e in
-       eval (Environment.extend env n e') level c
-    ) >!= raise_with_loc loc
+       let e' = eval ~def ~env ~level:(level + 1) e in
+       eval ~def ~env:(Environment.extend env n e') ~level c)
+    >!= raise_with_loc loc
+  | Ast.Alias (loc, n, e, c) ->
+    (fun () -> eval ~def:(Definition.add n e def) ~env ~level c)
+    >!= raise_with_loc loc
   | Ast.Rec (loc, n, e, c) ->
     (fun () ->
        let n' = Variable.make (level + 1) in
        let ext = Environment.extend env n n' in
-       let e' = eval ext (level + 2) e in
-       unification n' e';
-       eval (Environment.extend env n (generalization level e')) level c
-    ) >!= raise_with_loc loc
-  | Ast.Ann (loc, e, ann) ->
+       let e' = eval ~def ~env:ext ~level:(level + 2) e in
+       unification ~def n' e';
+       eval
+         ~def
+         ~env:(Environment.extend env n (generalization level e'))
+         ~level c)
+    >!= raise_with_loc loc
+  | Ast.Ann (loc, e, (lst, ty)) ->
 
     (** Infering type annotation `expr : type` is equivalent to inferring the
      * type of function call `((lambda (x : type) x) expr)`, but optimized in
@@ -486,26 +546,28 @@ let rec eval env level = function
     *)
 
     (fun () ->
-       let _, ty = specialization_annotation level ann in
-       let e' = eval env level e in
-       subsume level ty e';
-       ty
-    ) >!= raise_with_loc loc
+       let _, ty_normalized = normalize ~def ty in
+       let _, ty_normalized =
+         specialization_annotation level (lst, ty_normalized) in
+       let e' = eval ~def ~env ~level e in
+       subsume ~def ~level ty_normalized e';
+       ty)
+    >!= raise_with_loc loc
   | Ast.If (loc, i, a, b) ->
     (fun () ->
-       let i' = eval env level i in
-       let a' = eval env level a in
-       let b' = eval env level b in
-       unification i' (Type.Const "bool");
-       unification a' b';
+       let i' = eval ~def ~env ~level i in
+       let a' = eval ~def ~env ~level a in
+       let b' = eval ~def ~env ~level b in
+       unification ~def i' (Type.Const "bool");
+       unification ~def a' b';
        a')
     >!= raise_with_loc loc
   | Ast.Seq (loc, a, b) ->
     (fun () ->
-      let a' = eval env level a in
-      let b' = eval env level b in
-      unification a' (Type.Const "unit");
-      b')
+       let a' = eval ~def ~env ~level a in
+       let b' = eval ~def ~env ~level b in
+       unification ~def a' (Type.Const "unit");
+       b')
     >!= raise_with_loc loc
   | Ast.Int _ -> Type.Const "int"
   | Ast.Bool _ -> Type.Const "bool"
@@ -529,7 +591,7 @@ let rec eval env level = function
  * @param a list of arguments
 *)
 
-and compute_argument env level tys a =
+and compute_argument def env level tys a =
   let plst = List.combine tys a in
   let get_ordering ty arg =
     match Type.unlink ty with
@@ -542,8 +604,8 @@ and compute_argument env level tys a =
   in
   List.iter
     (fun (ty, a) ->
-       let ty' = eval env level a in
+       let ty' = eval ~def ~env ~level a in
        if Ast.is_annotated a
-       then unification ty ty'
-       else subsume level ty ty')
+       then unification ~def ty ty'
+       else subsume ~def ~level ty ty')
     slst
