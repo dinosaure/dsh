@@ -2,7 +2,7 @@ let interpret expr =
   let lexbuf = Lexing.from_string expr in
   try
     let tree = Parser.single_expr Lexer.token lexbuf in
-    let ty = Synthesis.eval Core.core 0 tree in
+    let ty = Synthesis.eval ~env:Core.core tree in
     let rt = Interpreter.eval Core.runtime tree in
     Printf.printf "%s : %s\n%!" (Interpreter.to_string rt) (Type.to_string ty);
   with

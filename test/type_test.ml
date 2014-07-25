@@ -189,7 +189,7 @@ let make_test (expr, result) =
   String.escaped expr >:: fun _ ->
     let re =
       try Synthesis.Variable.reset ();
-        let ty = Synthesis.eval Core.core 0
+        let ty = Synthesis.eval ~env:Core.core
             (Parser.single_expr Lexer.token (Lexing.from_string expr)) in
         OK (Type.to_string ty)
       with exn -> Fail exn
