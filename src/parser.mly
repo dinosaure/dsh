@@ -133,6 +133,8 @@ expr:
   { Ast.Char (Location.make $startpos $endpos, c) }
   | LPAR TYPE n = NAME t = ty e = expr RPAR
   { Ast.Alias (Location.make $startpos $endpos, n, t, e) }
+  | LPAR RPAR
+  { Ast.Unit (Location.make $startpos $endpos) }
 
 param:
   | x = NAME
