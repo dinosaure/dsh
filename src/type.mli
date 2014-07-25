@@ -13,6 +13,7 @@ and var =
 module Map : sig
   include Map.S with type key = int
 
+  val generate : int -> string
   val extend : string t -> int list -> (string list * string t)
 end
 
@@ -20,3 +21,4 @@ val unlink : t -> t
 val is_monomorphic : t -> bool
 
 val to_string : ?env:string Map.t -> t -> string
+val copy : t -> t

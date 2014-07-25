@@ -118,3 +118,11 @@ let to_string ?(env = Map.empty) ty =
   in
   let buffer = Buffer.create 16 in
   expr ~first:true env buffer ty; Buffer.contents buffer
+
+let rec copy = function
+  | Const name -> Const name
+  | App (f, a) -> App (copy f, List.map copy a)
+  | Arrow (a, r) -> Arrow (List.map copy a, copy r)
+  | Var { contents = Link a } -> Var { contents = Link (copy a) }
+  | Var ref -> Var (BatRef.copy ref)
+  | Forall (lst, ty) -> Forall (lst, copy ty)
