@@ -130,6 +130,7 @@ let compute_variable id level ty =
       List.iter aux a; aux r
     | Type.Forall (_, ty) -> aux ty
     | Type.Const _ -> ()
+    | Type.Alias (_, ty) -> aux ty
   in aux ty
 
 (** substitution : takes a list of `Bound` variables [ids], a list of
@@ -154,6 +155,7 @@ let substitution ids tys ty =
       Type.Arrow (List.map (aux map) a, aux map r)
     | Type.Forall (ids, ty) ->
       Type.Forall (ids, aux (Map.removes map ids) ty)
+    | Type.Alias (name, ty) -> Type.Alias (name, aux map ty)
   in aux (Map.of_lists ids tys) ty
 
 let catch_generic_variable ty =
@@ -170,6 +172,7 @@ let catch_generic_variable ty =
     | Type.Arrow (a, r) ->
       List.iter aux a; aux r
     | Type.Forall (_, ty) -> aux ty
+    | Type.Alias (_, ty) -> aux ty
   in aux ty; set
 
 (** union : takes a list of `Generic` type variables and types [ty1] and type
@@ -202,7 +205,7 @@ let union lst ty1 ty2 =
 let rec normalize ~def = function
   | Type.Const name ->
     begin
-      try (true, Definition.find name def |> Type.copy)
+      try (true, Type.Alias (name, Definition.find name def |> Type.copy))
       with Not_found -> (false, Type.Const name)
     end
   | Type.App (f, a) ->
@@ -221,6 +224,9 @@ let rec normalize ~def = function
   | Type.Forall (lst, ty) ->
     let (s, ty) = normalize ~def ty in
     (s, Type.Forall (lst, ty))
+  | Type.Alias (name, ty) ->
+    let (s, ty) = normalize ~def ty in
+    (s, Type.Alias (name, ty))
   | ty -> (false, ty)
 
 (** unification : takes two types and tries to them, i.e. determine if they can
@@ -300,6 +306,9 @@ let rec unification ?(def = Definition.empty) t1 t2 =
       (unification ~def) ty1 ty2;
       if union lst forall1 forall2
       then raise (Conflict (forall1, forall2))
+
+    | Type.Alias (_, ty1), ty2 -> unification ~def ty1 ty2
+    | ty1, Type.Alias (_, ty2) -> unification ~def ty1 ty2
 
     (** Sometimes we try to unify a standardized type with an Alias. In this
      * case, we try to normalize the two types and if this treatment notify
@@ -400,11 +409,13 @@ let generalization level ty =
     | Type.Arrow (a, r) -> List.iter aux a; aux r
     | Type.Forall (_, ty) -> aux ty
     | Type.Const _ -> ()
+    | Type.Alias (_, ty) -> aux ty
   in aux ty; match !acc with
   | [] -> ty
   | ids -> Type.Forall (List.rev ids, ty)
 
 let rec compute_function n = function
+  | Type.Alias (_, ty) -> compute_function n ty
   | Type.Arrow (a, r) as ty ->
     if List.length a <> n
     then raise (Mismatch_arguments ty)

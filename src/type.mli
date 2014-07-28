@@ -4,6 +4,7 @@ type t =
   | Arrow of (t list * t)
   | Var of var ref
   | Forall of (int list * t)
+  | Alias of (string * t)
 and var =
   | Unbound of int * int
   | Bound of int

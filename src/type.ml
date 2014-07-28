@@ -4,6 +4,7 @@ type t =
   | Arrow of (t list * t)
   | Var of var ref
   | Forall of (int list * t)
+  | Alias of (string * t)
 and var =
   | Unbound of int * int
   | Bound of int
@@ -66,6 +67,7 @@ let rec is_monomorphic = function
     is_monomorphic f && List.for_all is_monomorphic a
   | Arrow (a, r) ->
     List.for_all is_monomorphic a && is_monomorphic r
+  | Alias (_, t) -> is_monomorphic t
 
 let memoize f =
   let cache = Hashtbl.create 16 in
@@ -88,6 +90,8 @@ let to_string ?(env = Map.empty) ty =
   in
   let rec atom ?(first = false) env buffer = function
     | Const name ->
+      Buffer.add_string buffer name
+    | Alias (name, _) ->
       Buffer.add_string buffer name
     | App (f, a) ->
       Printf.bprintf buffer "(%a %a)"
@@ -130,3 +134,4 @@ let rec copy = function
   | Var { contents = Link a } -> Var { contents = Link (copy a) }
   | Var ref -> Var (BatRef.copy ref)
   | Forall (lst, ty) -> Forall (lst, copy ty)
+  | Alias (s, t) -> Alias (s, copy t)
