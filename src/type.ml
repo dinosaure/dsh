@@ -100,7 +100,11 @@ let to_string ?(env = Map.empty) ty =
         (expr ~first:true env) ty
     | Var { contents = Unbound (id, _) } ->
       Printf.bprintf buffer "%s" (name_of_unbound id)
-    | Var { contents = Bound id } -> Buffer.add_string buffer (Map.find id env)
+    | Var { contents = Bound id } ->
+      begin
+        try Buffer.add_string buffer (Map.find id env)
+        with Not_found -> Printf.bprintf buffer "#%d" id
+      end
     | Var { contents = Generic id } ->
       Printf.bprintf buffer "%s" (name_of_unbound id)
     | Var { contents = Link ty } -> atom ~first env buffer ty
