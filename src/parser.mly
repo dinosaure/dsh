@@ -39,6 +39,7 @@ let replace ids ty =
       (** see App *)
     | Forall (ids, ty) ->
       Forall (ids, aux ty)
+    | Alias _ -> assert false (** It's premature *)
   in (List.rev !lst, aux ty)
 
 let reduce (lst, stop) startpos endpos =
