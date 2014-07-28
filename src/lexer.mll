@@ -30,7 +30,9 @@ let special = ['\\' '\'' '"' 'n' 't' 'b' 'r' ' ']
 let hexa = ['0'-'9' 'a'-'f' 'A'-'F']
 
 rule token = parse
-  | [' ' '\t' '\r' '\n']                  { token lexbuf }
+  | [' ' '\t' '\r']                       { token lexbuf }
+  | '\n'                                  { Lexing.new_line lexbuf;
+                                            token lexbuf }
   | '('                                   { Parser.LPAR }
   | ')'                                   { Parser.RPAR }
   | '['                                   { Parser.LBRA }
