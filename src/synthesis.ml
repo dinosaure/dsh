@@ -490,24 +490,20 @@ let rec eval
        let refenv = ref env in
        let lstvar = ref [] in
        let a' = List.map (fun (name, ann) ->
-           let (ty_normalized, ty) = match ann with
+           let ty = match ann with
              | None ->
                let var = Variable.make (level + 1) in
                lstvar := var :: !lstvar;
-               (None, var)
+               var
              | Some (lst, ty) ->
                let _, ty_normalized = normalize ~def ty in
                let vars, ty_normalized = specialization_annotation
                    (level + 1)
                    (lst, ty_normalized) in
                lstvar := vars @ !lstvar;
-               (Some ty_normalized, ty)
-           in refenv := begin
-             match ty_normalized with
-             | None -> Environment.extend !refenv name ty
-             | Some ty_normalized ->
-               Environment.extend !refenv name ty_normalized
-           end; ty) a
+               ty_normalized
+           in refenv := Environment.extend !refenv name ty;
+           ty) a
        in
        let r' = eval ~def ~env:!refenv ~level:(level + 1) c in
        let r' =
@@ -567,7 +563,7 @@ let rec eval
          specialization_annotation level (lst, ty_normalized) in
        let e' = eval ~def ~env ~level e in
        subsume ~def ~level ty_normalized e';
-       ty)
+       ty_normalized)
     >!= raise_with_loc loc
   | Ast.If (loc, i, a, b) ->
     (fun () ->
