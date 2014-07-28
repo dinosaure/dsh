@@ -171,7 +171,18 @@ let tests =
                  (lambda (f l) (foldl (lambda (a x) (f x)) () l))))
            (lambda (l) (iter #num l)))",
      OK ("((list int) -> unit)"));
-
+    ("(lambda (f a b) [(f a) = b])",
+     OK ("(forall (a b) ((a -> b) -> a -> b -> bool))"));
+    ("(lambda (x : (some (a) (a -> a))) x)",
+     OK ("(forall (a) ((a -> a) -> a -> a))"));
+    ("(lambda (x : (forall (a) (a -> a))) x)",
+     OK ("(forall (a) ((forall (b) (b -> b)) -> a -> a))"));
+    ("(lambda (f : (some (a b) (a -> b)) x y) [(f x) = y])",
+     OK ("(forall (a b) ((a -> b) -> a -> b -> bool))"));
+    ("(let (foo (lambda (x : (some (a) a)) x)) foo)",
+     OK ("(forall (a) (a -> a))"));
+    ("(lambda (f : (forall (a b) (a -> b)) x y) [(f x) = y])",
+     OK ("(forall (a b) ((forall (c d) (c -> d)) -> a -> b -> bool))"));
   ]
 
 let to_string = function
