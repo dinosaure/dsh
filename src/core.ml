@@ -38,6 +38,8 @@ let core =
   |> add ">=      : (int -> int -> bool)"
   |> add "<=      : (int -> int -> bool)"
   |> add "not     : (bool -> bool)"
+  |> add "and     : (bool -> bool -> bool)"
+  |> add "or      : (bool -> bool -> bool)"
 
   |> add ",       : (forall (a b) (a -> b -> (pair a b)))"
   |> add "fst     : (forall (a b) ((pair a b) -> a))"
