@@ -191,6 +191,14 @@ let union lst ty1 ty2 =
   List.exists
     (fun var -> Set.mem set1 var || Set.mem set2 var) lst
 
+(** normalize : normalizes type by replacing its alias with new bodies to which
+ * they are linked. The function returns the standard type and a [bool]
+ * notifier if an alias was expanded.
+ *
+ * @param def all definitions
+ * @param ty type normalize
+*)
+
 let rec normalize ~def = function
   | Type.Const name ->
     begin
@@ -225,6 +233,7 @@ let rec normalize ~def = function
  * If type T pointed is known, it should not reduce the variable type T since
  * it can be shared by other variables and we could break links.
  *
+ * @param def all definitions
  * @param t1
  * @param t2
  *
@@ -268,8 +277,8 @@ let rec unification ?(def = Definition.empty) t1 t2 =
 
     (** First, we create a fresh `Generic` type variable for every type
      * variable bound by the two polymorphic types. Here, we rely on the fact
-     * that bot types are normalized, so equivalent generic type variables
-     * should appear in the same locations in both types.
+     * that both types are normalized (see [normalize]), so equivalent generic
+     * type variables should appear in the same locations in both types.
      *
      * Then, we substitute all `Bound` type variables in both types with
      * `Generic` type variables, an try to unify them.
@@ -291,6 +300,13 @@ let rec unification ?(def = Definition.empty) t1 t2 =
       (unification ~def) ty1 ty2;
       if union lst forall1 forall2
       then raise (Conflict (forall1, forall2))
+
+    (** Sometimes we try to unify a standardized type with an Alias. In this
+     * case, we try to normalize the two types and if this treatment notify
+     * us expand an alias, it restarts the unification with standardized
+     * types.
+    *)
+
     | ty1, ty2 ->
       let (s1, ty1) = normalize ~def ty1 in
       let (s2, ty2) = normalize ~def ty2 in
@@ -585,6 +601,7 @@ let rec eval
  * `poly : ((forall (a) (a -> a ->)) -> (pair int bool))` and
  * `id` : (forall (a) (a -> a)).
  *
+ * @param def all definitions
  * @param env environment
  * @param level level for [subsume] and [eval]
  * @param tys list of types of arguments
