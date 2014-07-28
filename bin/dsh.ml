@@ -40,6 +40,7 @@ let rec file inch filename =
   let lexbuf = Lexing.from_channel inch in
   try
     let tree = Parser.exprs Lexer.token lexbuf in
+    let _ = Synthesis.eval ~env:Core.core tree in
     let _ = Interpreter.eval Core.runtime tree in
     ()
   with
