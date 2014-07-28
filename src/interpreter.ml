@@ -68,6 +68,13 @@ let rec eval env = function
        try Environment.find name env
        with Not_found -> raise (Unbound_variable name))
     >!= raise_with_loc loc
+
+  (** The `if` is a primitive language because evaluation must be lazy. Indeed,
+    * in a policy call-by-value, in the case of a recursive definition, we will
+    * evaluate the `if` arguments independently of the predicat that would a
+    * loop infinite.
+  *)
+
   | Ast.If (loc, i, a, b) ->
     (fun () ->
        eval env i
