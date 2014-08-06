@@ -194,38 +194,38 @@ let union lst ty1 ty2 =
   List.exists
     (fun var -> Set.mem set1 var || Set.mem set2 var) lst
 
-(** normalize : normalizes type by replacing its alias with new bodies to which
+(** expand : expands type by replacing its alias with new bodies to which
  * they are linked. The function returns the standard type and a [bool]
  * notifier if an alias was expanded.
  *
  * @param def all definitions
- * @param ty type normalize
+ * @param ty type expand
 *)
 
-let rec normalize ~def = function
+let rec expand ~def = function
   | Type.Const name ->
     begin
       try (true, Type.Alias (name, Definition.find name def |> Type.copy))
       with Not_found -> (false, Type.Const name)
     end
   | Type.App (f, a) ->
-    let (s, f) = normalize ~def f in
-    let lst = List.map (normalize ~def) a in
+    let (s, f) = expand ~def f in
+    let lst = List.map (expand ~def) a in
     (s || List.fold_left (fun a x -> a || fst x) false lst,
      Type.App (f, List.map snd lst))
   | Type.Arrow (a, r) ->
-    let lst = List.map (normalize ~def) a in
-    let (s, r) = normalize ~def r in
+    let lst = List.map (expand ~def) a in
+    let (s, r) = expand ~def r in
     (List.fold_left (fun a x -> a || fst x) false lst || s,
      Type.Arrow (List.map snd lst, r))
   | Type.Var ({ contents = Type.Link t } as var) ->
-    let (s, v) = normalize ~def t in
+    let (s, v) = expand ~def t in
     var := Type.Link v; (s, Type.Var var)
   | Type.Forall (lst, ty) ->
-    let (s, ty) = normalize ~def ty in
+    let (s, ty) = expand ~def ty in
     (s, Type.Forall (lst, ty))
   | Type.Alias (name, ty) ->
-    let (s, ty) = normalize ~def ty in
+    let (s, ty) = expand ~def ty in
     (s, Type.Alias (name, ty))
   | ty -> (false, ty)
 
@@ -301,8 +301,8 @@ let rec unification ?(def = Definition.empty) t1 t2 =
         try List.rev_map2 (fun _ _ -> Variable.generic ()) ids1 ids2
         with Invalid_argument "List.rev_map2" -> raise (Conflict (ty1, ty2))
       in
-      let ty1 = substitution ids1 lst (normalize ~def ty1 |> snd) in
-      let ty2 = substitution ids2 lst (normalize ~def ty2 |> snd) in
+      let ty1 = substitution ids1 lst (expand ~def ty1 |> snd) in
+      let ty2 = substitution ids2 lst (expand ~def ty2 |> snd) in
       (unification ~def) ty1 ty2;
       if union lst forall1 forall2
       then raise (Conflict (forall1, forall2))
@@ -311,14 +311,14 @@ let rec unification ?(def = Definition.empty) t1 t2 =
     | ty1, Type.Alias (_, ty2) -> unification ~def ty1 ty2
 
     (** Sometimes we try to unify a standardized type with an Alias. In this
-     * case, we try to normalize the two types and if this treatment notify
+     * case, we try to expand the two types and if this treatment notify
      * us expand an alias, it restarts the unification with standardized
      * types.
     *)
 
     | ty1, ty2 ->
-      let (s1, ty1) = normalize ~def ty1 in
-      let (s2, ty2) = normalize ~def ty2 in
+      let (s1, ty1) = expand ~def ty1 in
+      let (s2, ty2) = expand ~def ty2 in
       if s1 || s2
       then unification ~def ty1 ty2
       else raise (Conflict (t1, t2))
@@ -507,12 +507,12 @@ let rec eval
                lstvar := var :: !lstvar;
                var
              | Some (lst, ty) ->
-               let _, ty_normalized = normalize ~def ty in
-               let vars, ty_normalized = specialization_annotation
+               let _, ty_expanded = expand ~def ty in
+               let vars, ty_expanded = specialization_annotation
                    (level + 1)
-                   (lst, ty_normalized) in
+                   (lst, ty_expanded) in
                lstvar := vars @ !lstvar;
-               ty_normalized
+               ty_expanded
            in refenv := Environment.extend !refenv name ty;
            ty) a
        in
@@ -536,7 +536,7 @@ let rec eval
 
     (fun () ->
        let f' = eval ~def ~env ~level:(level + 1) f in
-       let f' = normalize ~def f' |> snd in
+       let f' = expand ~def f' |> snd in
        let f' = specialization (level + 1) f' in
        let a', r' = compute_function (List.length a) f' in
        compute_argument def env (level + 1) a' a;
@@ -569,12 +569,12 @@ let rec eval
     *)
 
     (fun () ->
-       let _, ty_normalized = normalize ~def ty in
-       let _, ty_normalized =
-         specialization_annotation level (lst, ty_normalized) in
+       let _, ty_expanded = expand ~def ty in
+       let _, ty_expanded =
+         specialization_annotation level (lst, ty_expanded) in
        let e' = eval ~def ~env ~level e in
-       subsume ~def ~level ty_normalized e';
-       ty_normalized)
+       subsume ~def ~level ty_expanded e';
+       ty_expanded)
     >!= raise_with_loc loc
   | Ast.If (loc, i, a, b) ->
     (fun () ->
