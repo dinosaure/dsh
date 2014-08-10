@@ -1,3 +1,12 @@
+module Set : sig
+  include (module type of Map.Make(String))
+
+  val of_list : (string * 'a) list -> 'a t
+  val to_list : 'a t -> (string * 'a) list
+
+  val iter2 : ((string * 'a) -> (string * 'b) -> unit) -> 'a t -> 'b t -> unit
+end
+
 type t =
   | Const of string
   | App of (t * t list)
@@ -5,6 +14,7 @@ type t =
   | Var of var ref
   | Forall of (int list * t)
   | Alias of (string * t)
+  | Set of t Set.t
 and var =
   | Unbound of int * int
   | Bound of int

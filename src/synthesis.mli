@@ -5,10 +5,6 @@ module Environment : sig
   val lookup : Type.t t -> string -> Type.t
 end
 
-module Definition : sig
-  include (module type of Map.Make (String))
-end
-
 module Variable : sig
   val next : unit -> int
   val reset : unit -> unit
@@ -28,15 +24,14 @@ exception Variable_no_instantiated
 exception Polymorphic_argument_inferred of Type.t list
 exception No_instance of (Type.t * Type.t)
 exception Unknown_type of string
+exception Unbound_constructor of string
 exception Error of (Location.t * exn)
 
-val string_of_exn : exn -> string
-
-val unification : ?def:(Type.t Definition.t) -> Type.t -> Type.t -> unit
+val unification : ?gamma:(Gamma.t) -> Type.t -> Type.t -> unit
 val generalization : int -> Type.t -> Type.t
 val specialization : int -> Type.t -> Type.t
 
 val eval :
-  ?def:Type.t Definition.t ->
+  ?gamma:Gamma.t ->
   ?env:Type.t Environment.t ->
   ?level:int -> Ast.t -> Type.t

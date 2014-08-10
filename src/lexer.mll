@@ -24,6 +24,8 @@ let char_of_hexa a b =
 let name =
   ['_' 'A'-'Z' 'a'-'z' '=' '!' '<' '>' '+' '-' '*' '/' '%' '#' '|']+
   ['_' 'A'-'Z' 'a'-'z' '0'-'9'] * ['\''] * | [ ',' ]
+let ctor =
+  ['A'-'Z']+ ['_' 'A'-'Z' 'a'-'z' '0'-'9'] * ['\''] *
 let digit = ['0'-'9']
 let character = ['a'-'z' 'A'-'Z']
 let special = ['\\' '\'' '"' 'n' 't' 'b' 'r' ' ']
@@ -39,6 +41,7 @@ rule token = parse
   | ']'                                   { Parser.RBRA }
   | ':'                                   { Parser.COMMA }
   | ';'                                   { Parser.SEMICOLON }
+  | '|'                                   { Parser.PIPE }
   | "lambda"                              { Parser.LAMBDA }
   | "let"                                 { Parser.LET }
   | "rec"                                 { Parser.REC }
@@ -53,6 +56,7 @@ rule token = parse
   | "'" '\\' (special as c) "'"           { Parser.CHAR (char_of_backslash c) }
   | "'" ([^ '\\'] as c) "'"               { Parser.CHAR c }
   | digit+ as n                           { Parser.NUMBER (int_of_string n) }
+  | ctor as n                             { Parser.CTOR n }
   | name as n                             { Parser.NAME n }
   | eof                                   { Parser.EOF }
   | _                                     { raise Lexical_error }
@@ -66,6 +70,7 @@ let string_of_token = function
   | Parser.RBRA -> "]"
   | Parser.COMMA -> ":"
   | Parser.SEMICOLON -> ";"
+  | Parser.PIPE -> "|"
   | Parser.LET -> "let"
   | Parser.REC -> "rec"
   | Parser.LAMBDA -> "lambda"
@@ -74,6 +79,7 @@ let string_of_token = function
   | Parser.ARROW -> "->"
   | Parser.IF -> "if"
   | Parser.TYPE -> "type"
+  | Parser.CTOR n -> n
   | Parser.NAME n -> n
   | Parser.NUMBER n -> string_of_int n
   | Parser.BOOL b -> if b then "true" else "false"

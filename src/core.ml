@@ -3,7 +3,7 @@ let add expr env =
   match expr with
   | Ast.Ann (_, Ast.Var (_, name), ([], ty)) ->
     Synthesis.Environment.add name ty env
-  | _ -> raise (Invalid_argument "Core.add")
+  | _ -> raise (Invalid_argument ("Core.add: " ^ (Ast.to_string expr)))
 
 let core =
   Synthesis.Environment.empty

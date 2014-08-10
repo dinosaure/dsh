@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: 425ce1833e2b56ff44089312e51b4e79)
+# DO NOT EDIT (digest: 3ee158b9faac67f6e491b45105cb427f)
 # Ignore VCS directories, you can use the same kind of rule outside
 # OASIS_START/STOP if you want to exclude directories that contains
 # useless stuff for the build process
@@ -17,8 +17,10 @@
 "src/dsh.cmxs": use_dsh
 <src/*.ml{,i}>: pkg_batteries
 # Executable dsh
+"bin/dsh.byte": pkg_ANSITerminal
 "bin/dsh.byte": pkg_batteries
 "bin/dsh.byte": use_dsh
+<bin/*.ml{,i}>: pkg_ANSITerminal
 <bin/*.ml{,i}>: pkg_batteries
 <bin/*.ml{,i}>: use_dsh
 # Executable test_parser

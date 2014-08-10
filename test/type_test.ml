@@ -186,7 +186,7 @@ let tests =
   ]
 
 let to_string = function
-  | Fail e -> "Fail: " ^ (Synthesis.string_of_exn e)
+  | Fail e -> "Fail: " ^ (Printexc.to_string e)
   | OK ty -> "OK: " ^ ty
   | Unsafe -> "Fail"
 

@@ -1,3 +1,19 @@
+module Set = struct
+  include Map.Make(String)
+
+  let of_list lst =
+    List.fold_left
+      (fun acc (key, value) -> add key value acc)
+      empty lst
+
+  let to_list set =
+    fold (fun key value acc -> (key, value) :: acc) set []
+
+  let iter2 func set1 set2 =
+    try List.iter2 func (to_list set1) (to_list set2)
+    with Invalid_argument _ -> raise (Invalid_argument ("Type.Set.iter2"))
+end
+
 type t =
   | Const of string
   | App of (t * t list)
@@ -5,6 +21,7 @@ type t =
   | Var of var ref
   | Forall of (int list * t)
   | Alias of (string * t)
+  | Set of t Set.t
 and var =
   | Unbound of int * int
   | Bound of int
@@ -68,6 +85,8 @@ let rec is_monomorphic = function
   | Arrow (a, r) ->
     List.for_all is_monomorphic a && is_monomorphic r
   | Alias (_, t) -> is_monomorphic t
+  | Set l ->
+    Set.for_all (fun _ -> is_monomorphic) l
 
 let memoize f =
   let cache = Hashtbl.create 16 in
@@ -122,6 +141,16 @@ let to_string ?(env = Map.empty) ty =
         (expr env) r
         (if first then ")" else "")
     | Var { contents = Link ty } -> expr ~first env buffer ty
+    | Set l ->
+      let of_variant buffer = function
+        | ctor, Const "unit" -> Buffer.add_string buffer ctor
+        | ctor, ty ->
+          Printf.bprintf buffer "(%s %a)"
+            ctor
+            (expr ~first env) ty
+      in
+      Printf.bprintf buffer "(%a)"
+        (Buffer.add_list ~sep:" | " of_variant) (Set.to_list l)
     | ty -> atom ~first env buffer ty
   in
   let buffer = Buffer.create 16 in
@@ -135,3 +164,4 @@ let rec copy = function
   | Var ref -> Var (BatRef.copy ref)
   | Forall (lst, ty) -> Forall (lst, copy ty)
   | Alias (s, t) -> Alias (s, copy t)
+  | Set l -> Set (Set.map copy l)

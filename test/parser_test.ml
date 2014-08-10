@@ -15,6 +15,7 @@ module Ast_without_loc = struct
     | Char of char
     | Unit
     | Alias of (string * Type.t * t)
+    | Variant of (string * t)
   and annotation = (int list * Type.t)
 
   let rec to_ast = function
@@ -31,6 +32,7 @@ module Ast_without_loc = struct
     | Char c -> Ast.Char (Location.dummy, c)
     | Unit -> Ast.Unit (Location.dummy)
     | Alias (n, t, e) -> Ast.Alias (Location.dummy, n, t, to_ast e)
+    | Variant (c, e) -> Ast.Variant (Location.dummy, c, to_ast e)
 
   let rec of_ast = function
     | Ast.Var (_, name) -> Var name
@@ -46,6 +48,7 @@ module Ast_without_loc = struct
     | Ast.Char (_, c) -> Char c
     | Ast.Unit _ -> Unit
     | Ast.Alias (_, n, t, e) -> Alias (n, t, of_ast e)
+    | Ast.Variant (_, c, e) -> Variant (c, of_ast e)
 end
 
 type t =

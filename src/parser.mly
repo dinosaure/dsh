@@ -40,6 +40,8 @@ let replace ids ty =
     | Forall (ids, ty) ->
       Forall (ids, aux ty)
     | Alias _ -> assert false (** It's premature *)
+    | Set l ->
+      Set (Type.Set.map aux l)
   in (List.rev !lst, aux ty)
 
 let reduce (lst, stop) startpos endpos =
@@ -55,13 +57,14 @@ let reduce (lst, stop) startpos endpos =
 
 %}
 
+%token <string> CTOR
 %token <string> NAME
 %token <int> NUMBER
 %token <bool> BOOL
 %token <char> CHAR
 %token LET LAMBDA FORALL SOME REC IF TYPE
 %token LPAR RPAR LBRA RBRA
-%token ARROW COMMA SEMICOLON
+%token ARROW COMMA SEMICOLON PIPE
 %token EOF
 
 %start single_expr
@@ -84,6 +87,12 @@ alist(C, X):
   { r |> fun (x, r) -> (a :: x, r) }
   | x = X C y = X
   { ([ x ], y) }
+
+ulist(C, X):
+  | x = X C r = ulist(C, X)
+  { x :: r }
+  | x = X
+  { [ x ] }
 
 exprs:
   | LPAR TYPE n = NAME t = ty RPAR r = exprs
@@ -112,6 +121,15 @@ expr:
   { Ast.Rec (Location.make $startpos $endpos, n, e, c) }
   | LPAR LAMBDA l = slist(param) e = expr RPAR
   { Ast.Abs (Location.make $startpos $endpos, l, e) }
+
+  (** XXX: Conflict is here *)
+  | LPAR c = CTOR e = expr RPAR
+  { Ast.Variant (Location.make $startpos $endpos, c, e) }
+
+
+  | c = CTOR
+  { let pos = Location.make $startpos $endpos in
+    Ast.Variant (pos, c, Ast.Unit pos) }
   | n = NAME
   { Ast.Var (Location.make $startpos $endpos, n) }
   | LPAR e = expr RPAR
@@ -143,6 +161,12 @@ param:
   | x = NAME COMMA n = ann
   { (x, Some n) }
 
+ty_variant:
+  | c = CTOR
+  { (c, Type.Const "unit") }
+  | LPAR c = CTOR ty = ty RPAR
+  { (c, ty) }
+
 ty:
   | n = NAME
   { Type.Const n }
@@ -152,6 +176,8 @@ ty:
   { Type.Arrow c }
   | LPAR x = ty RPAR
   { x }
+  | LPAR l = ulist(PIPE, ty_variant) RPAR
+  { Type.Set (Type.Set.of_list l) }
   | LPAR FORALL l = slist(NAME) x = ty RPAR
   { let (ids, ty) = replace l x in
     match ids with

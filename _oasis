@@ -9,8 +9,8 @@ BuildTools:              ocamlbuild
 
 Library dsh
   Path:                  src
-  Modules:               Location, Lexer, Parser, Ast, Type, Synthesis, Core,
-                         Interpreter
+  Modules:               Location, Lexer, Parser, Ast, Type, Gamma, Synthesis,
+                         Core, Interpreter
   BuildDepends:          batteries
 
 Executable dsh

@@ -27,22 +27,26 @@ type t =
   | Unit
   | Closure of (t Environment.t * string list * Ast.t * string option)
   | Primitive of (t list -> t)
+  | Variant of (string * t)
 
 exception Unbound_variable of string
 exception Expected_function
 exception Expected_boolean
 exception Error of (Location.t * exn)
 
-let rec string_of_exn = function
-  | Unbound_variable name ->
-    ("unbound variable " ^ name)
-  | Expected_function -> "expected function"
-  | Expected_boolean -> "expected boolean"
-  | Error (loc, exn) ->
-    Printf.sprintf "%s at %s" (string_of_exn exn) (Location.to_string loc)
-  | exn ->
-    raise (Invalid_argument ("Interpreter.string_of_exn: "
-                             ^ (Printexc.to_string exn)))
+let () = Printexc.register_printer
+    (function
+      | Unbound_variable name ->
+        Some ("unbound variable " ^ name)
+      | Expected_function ->
+        Some "expected function"
+      | Expected_boolean ->
+        Some "expected boolean"
+      | Error (loc, exn) ->
+        Some (Printf.sprintf "%s at %s"
+                (Printexc.to_string exn)
+                (Location.to_string loc))
+      | _ -> None)
 
 let rec to_string = function
   | Int i -> string_of_int i
@@ -53,6 +57,9 @@ let rec to_string = function
   | Unit -> "()"
   | Closure _ -> "#closure"
   | Primitive _ -> "#primitive"
+  | Variant (ctor, Unit) -> ctor
+  | Variant (ctor, expr) ->
+    Printf.sprintf "(%s %a)" ctor (fun () -> to_string) expr
 
 let ( >!= ) func handle_error =
   try func ()
@@ -132,3 +139,4 @@ let rec eval env = function
   | Ast.Char (_, value) -> Char value
   | Ast.Unit _ -> Unit
   | Ast.Alias (_, _, _, expr) -> eval env expr
+  | Ast.Variant (_, ctor, expr) -> Variant (ctor, eval env expr)
