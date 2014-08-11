@@ -35,16 +35,18 @@ exception Constructor_already_exists of string
 let () = Printexc.register_printer
     (function
       | Constructor_already_exists ctor ->
-        Some (Printf.sprintf "Constructor already exists %s" ctor)
+        Some (Printf.sprintf "constructor %s already exists" ctor)
       | _ -> None)
 
 let add key value gamma = match value with
   | Type.Set l ->
     let exists = Type.Set.fold
-        (fun ctor _ acc ->
-          if Datatype.exists ctor gamma
-          then Some ctor
-          else None)
+        (fun ctor _ ->
+           function
+           | None -> if Datatype.exists ctor gamma
+             then Some ctor
+             else None
+           | x -> x)
         l None
     in exists |> (function
       | Some ctor -> raise (Constructor_already_exists ctor)
