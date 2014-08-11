@@ -10,7 +10,7 @@ let interpret expr =
     let loc = Location.make
         (Lexing.lexeme_start_p lexbuf)
         (Lexing.lexeme_end_p lexbuf)
-    in Printf.printf "Parsing error at: %s\n%!"
+    in Printf.printf "Parsing error at:\n%s\n%!"
       (Location.to_string_of_line loc expr)
   | Lexer.Lexical_error ->
     let loc = Location.make
@@ -35,9 +35,7 @@ let rec file inch filename =
   let lexbuf = Lexing.from_channel inch in
   try
     let tree = Parser.exprs Lexer.token lexbuf in
-    Printf.printf "parsing: ok!\n%!";
     let _ = Synthesis.eval ~env:Core.core tree in
-    Printf.printf "typing: ok!\n%!";
     let _ = Interpreter.eval Core.runtime tree in
     ()
   with
@@ -49,18 +47,18 @@ let rec file inch filename =
     Printf.printf "Parsing error at %s:\n> %s\n%!"
       (Location.to_string loc)
       (Location.to_string_of_file loc filename)
-  | Synthesis.Error (loc, _)
-  | Interpreter.Error (loc, _) as exn ->
-    Printf.printf "%s at %s:\n> %s\n%!"
-      (Printexc.to_string exn)
-      (Location.to_string loc)
-      (Location.to_string_of_file loc filename)
   | Lexer.Lexical_error ->
     let loc = Location.make
         (Lexing.lexeme_start_p lexbuf)
         (Lexing.lexeme_end_p lexbuf)
     in
     Printf.printf "Lexical error at %s:\n> %s\n%!"
+      (Location.to_string loc)
+      (Location.to_string_of_file loc filename)
+  | Synthesis.Error (loc, _)
+  | Interpreter.Error (loc, _) as exn ->
+    Printf.printf "%s at %s:\n> %s\n%!"
+      (Printexc.to_string exn)
       (Location.to_string loc)
       (Location.to_string_of_file loc filename)
 
