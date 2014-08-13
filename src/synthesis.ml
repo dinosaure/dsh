@@ -325,7 +325,7 @@ let rec unification ?(gamma = Gamma.empty) t1 t2 =
           Type.Set.iter2
             (fun (ctor1, ty1) (ctor2, ty2) -> unification ~gamma ty1 ty2)
             l1 l2
-        with _ -> raise (Conflict (t1, t2))
+        with Invalid_argument "List.iter2" -> raise (Conflict (t1, t2))
       end
 
     | Type.Alias (n1, ty1), Type.Const n2 when n1 = n2 ->
@@ -644,8 +644,10 @@ let rec eval
            in (name, ty)
          with Not_found -> raise (Unbound_constructor ctor)
        in
-       let v = Type.Set.add ctor (eval ~gamma ~env ~level expr) ty in
-       unification ~gamma (Type.Set ty |> expand ~gamma |> snd) (Type.Set v);
+       let v' = eval ~gamma ~env ~level expr in
+       let v' = specialization (level + 1) v' in
+       let v' = Type.Set.add ctor v' ty in
+       unification ~gamma (Type.Set ty |> expand ~gamma |> snd) (Type.Set v');
        Type.Alias (name, Type.Set ty))
     >!= raise_with_loc loc
 
