@@ -84,6 +84,28 @@ let tests =
      OK (Let ("a", Var "one", Var "a")));
     ("()", OK Unit);
     ("(id x))", Fail);
+    ("(Foo x)", OK (Variant ("Foo", Var "x")));
+    ("()", OK Unit);
+    ("(+ 21 21)", OK (App (Var "+", [Int 21; Int 21])));
+    ("(let (f a) f)", OK (Let ("f", Var "a", Var "f")));
+    ("(type (foo bar) x)", OK (Alias ("foo", Type.Const "bar", Var "x")));
+    ("(type foo bar x)", Fail);
+    ("(let f a x)", Fail);
+    ("Foo x", Fail);
+    ("x : (Foo | Bar)", OK (Ann (Var "x",
+                            ([], Type.Set (Type.Set.of_list
+                                       [("Foo", Type.Const "unit");
+                                        ("Bar", Type.Const "unit")])))));
+    ("x : ((Foo int))", OK (Ann (Var "x",
+                            ([], Type.Set (Type.Set.of_list
+                                       [("Foo", Type.Const "int")])))));
+    ("((type) (f a) x)", Fail);
+    ("(if a b c)", OK (If (Var "a", Var "b", Var "c")));
+    ("((if) a b c)", Fail);
+    ("(lambda (x : int) x)",
+     OK (Abs ([("x", Some ([], Type.Const "int"))], Var "x")));
+    ("(lambda (x) x) : id",
+     OK (Ann (Abs ([("x", None)], Var "x"), ([], Type.Const "id"))));
   ]
 
 let to_string = function
