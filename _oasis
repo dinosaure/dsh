@@ -61,3 +61,17 @@ Test test_type
   TestTools:             test_type
   Command:               $test_type
   WorkingDirectory:      .
+
+Executable test_alias
+  Path:                  test
+  Build$:                flag(tests)
+  Install:               false
+  CompiledObject:        best
+  MainIs:                alias_test.ml
+  BuildDepends:          dsh, oUnit
+
+Test test_alias
+  Run$:                  flag(tests)
+  TestTools:             test_alias
+  Command:               $test_alias
+  WorkingDirectory:      .
