@@ -150,7 +150,7 @@ expr:
   { Ast.Bool (Location.make $startpos $endpos, b) }
   | c = CHAR
   { Ast.Char (Location.make $startpos $endpos, c) }
-  | LPAR TYPE n = NAME t = ty e = expr RPAR
+  | LPAR TYPE LPAR n = NAME t = ty RPAR e = expr RPAR
   { Ast.Alias (Location.make $startpos $endpos, n, t, e) }
   | LPAR RPAR
   { Ast.Unit (Location.make $startpos $endpos) }
