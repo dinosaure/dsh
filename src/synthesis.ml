@@ -405,6 +405,7 @@ let specialization level ty =
       let lst = List.rev_map (fun _ -> Variable.make level) ids in
       substitution ids lst ty
     | Type.Var { contents = Type.Link ty } -> aux level ty
+    | Type.Alias (_, ty) -> aux level ty
     | ty -> ty
   in aux level ty
 
