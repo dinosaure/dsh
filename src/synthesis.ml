@@ -323,9 +323,11 @@ let rec unification ?(gamma = Gamma.empty) t1 t2 =
       begin
         try
           Type.Set.iter2
-            (fun (ctor1, ty1) (ctor2, ty2) -> unification ~gamma ty1 ty2)
+            (fun (ctor1, ty1) (ctor2, ty2) ->
+              if ctor1 = ctor2 then unification ~gamma ty1 ty2
+              else raise (Conflict (Type.Set l1, Type.Set l2)))
             l1 l2
-        with Invalid_argument "List.iter2" -> raise (Conflict (t1, t2))
+        with Invalid_argument "Type.Set.iter2" -> raise (Conflict (t1, t2))
       end
 
     | Type.Alias (n1, ty1), Type.Const n2 when n1 = n2 ->
