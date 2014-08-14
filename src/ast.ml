@@ -14,6 +14,7 @@ type t =
   | Alias of (Location.t * string * Type.t * t)
   | Variant of (Location.t * string * t)
   | Tuple of (Location.t * t list)
+  | Match of (Location.t * t * (Pattern.t * t) list)
 and annotation = (int list * Type.t)
 
 module Buffer = struct
@@ -69,6 +70,7 @@ let loc = function
   | Alias (loc, _, _, _) -> loc
   | Variant (loc, _, _) -> loc
   | Tuple (loc, _) -> loc
+  | Match (loc, _, _) -> loc
 
 let rec is_annotated = function
   | Ann (_, _, _) -> true
@@ -131,4 +133,14 @@ let to_string tree =
     | Tuple (_, l) ->
       Printf.bprintf buffer "(%a)"
         (Buffer.add_list ~sep:", " compute) l
+    | Match (_, expr, l) ->
+      let add_branch buffer (pattern, expr) =
+        Printf.bprintf buffer "(%s %a)"
+          (Pattern.to_string pattern)
+          compute expr
+      in
+      Printf.bprintf buffer "(match %a %a)"
+        compute expr
+        (Buffer.add_list ~sep:" " add_branch) l
+
   in compute buffer tree; Buffer.contents buffer

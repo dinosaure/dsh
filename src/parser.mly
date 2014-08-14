@@ -155,8 +155,13 @@ expr:
   { Ast.Alias (Location.make $startpos $endpos, n, t, e) }
   | LPAR RPAR
   { Ast.Unit (Location.make $startpos $endpos) }
+  | LPAR MATCH e = expr l = branch+ RPAR
+  { Ast.Match (Location.make $startpos $endpos, e, l) }
 
-(*
+branch:
+  | LPAR p = pattern e = expr RPAR
+  { (p, e) }
+
 pattern:
   | c = CTOR
   { let pos = Location.make $startpos $endpos in
@@ -171,7 +176,12 @@ pattern:
   { Pattern.Bool (Location.make $startpos $endpos, b) }
   | c = CHAR
   { Pattern.Char (Location.make $startpos $endpos, c) }
-*)
+  | LPAR RPAR
+  { Pattern.Unit (Location.make $startpos $endpos) }
+  | LPAR l = ulist(COMMA, pattern) RPAR
+  { Pattern.Tuple (Location.make $startpos $endpos, l) }
+  | LPAR x = pattern RPAR
+  { x }
 
 param:
   | x = NAME

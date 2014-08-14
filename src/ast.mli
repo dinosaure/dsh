@@ -14,6 +14,7 @@ type t =
   | Alias of (Location.t * string * Type.t * t)
   | Variant of (Location.t * string * t)
   | Tuple of (Location.t * t list)
+  | Match of (Location.t * t * (Pattern.t * t) list)
 and annotation = (int list * Type.t)
 
 val loc : t -> Location.t

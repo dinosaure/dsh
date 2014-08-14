@@ -10,8 +10,8 @@ AlphaFeatures:           ocamlbuild_more_args
 
 Library dsh
   Path:                  src
-  Modules:               Location, Lexer, Parser, Ast, Type, Gamma, Synthesis,
-                         Core, Interpreter
+  Modules:               Location, Lexer, Parser, Pattern, Ast, Type, Gamma,
+                         Synthesis, Core, Interpreter
   BuildDepends:          batteries
 
 Document "dsh"

@@ -29,25 +29,6 @@ type t =
   | Primitive of (t list -> t)
   | Variant of (string * t)
 
-exception Unbound_variable of string
-exception Expected_function
-exception Expected_boolean
-exception Error of (Location.t * exn)
-
-let () = Printexc.register_printer
-    (function
-      | Unbound_variable name ->
-        Some ("unbound variable " ^ name)
-      | Expected_function ->
-        Some "expected function"
-      | Expected_boolean ->
-        Some "expected boolean"
-      | Error (loc, exn) ->
-        Some (Printf.sprintf "%s at %s"
-                (Printexc.to_string exn)
-                (Location.to_string loc))
-      | _ -> None)
-
 let rec to_string = function
   | Int i -> string_of_int i
   | Bool b -> if b then "true" else "false"
@@ -60,6 +41,31 @@ let rec to_string = function
   | Variant (ctor, Unit) -> ctor
   | Variant (ctor, expr) ->
     Printf.sprintf "(%s %a)" ctor (fun () -> to_string) expr
+
+exception Unbound_variable of string
+exception Expected_function
+exception Expected_boolean
+exception Mismatch_pattern of (Pattern.t * t)
+exception Pattern_matching_fail
+exception Error of (Location.t * exn)
+
+let () = Printexc.register_printer
+    (function
+      | Unbound_variable name ->
+        Some ("unbound variable " ^ name)
+      | Expected_function ->
+        Some "expected function"
+      | Expected_boolean ->
+        Some "expected boolean"
+      | Mismatch_pattern (p, t) ->
+        Some (Printf.sprintf "mismatch pattern between %s and %s"
+              (Pattern.to_string p) (to_string t))
+      | Pattern_matching_fail -> Some "pattern-matching fail"
+      | Error (loc, exn) ->
+        Some (Printf.sprintf "%s at %s"
+                (Printexc.to_string exn)
+                (Location.to_string loc))
+      | _ -> None)
 
 let ( >!= ) func handle_error =
   try func ()
@@ -140,3 +146,34 @@ let rec eval env = function
   | Ast.Alias (_, _, _, expr) -> eval env expr
   | Ast.Variant (_, ctor, expr) -> Variant (ctor, eval env expr)
   | Ast.Tuple (_, l) -> Tuple (List.map (eval env) l)
+  | Ast.Match (loc, expr, patterns) ->
+    (fun () ->
+      let value = eval env expr in
+      let rec compute_branch = function
+        | (pattern, expr) :: r ->
+          begin
+            try let (names, values) = compute_pattern value pattern
+                                      |> List.split
+                in eval (Environment.extend env names values) expr
+            with _ -> compute_branch r
+          end
+        | _ -> raise Pattern_matching_fail
+      in compute_branch patterns)
+    >!= raise_with_loc loc
+
+and compute_pattern value pattern = match value, pattern with
+  | (value, Pattern.Var (_, name)) -> [(name, value)]
+  | (Bool b1, Pattern.Bool (_, b2)) when b1 = b2 -> []
+  | (Int i1, Pattern.Int (_, i2)) when i1 = i2 -> []
+  | (Char c1, Pattern.Char (_, c2)) when c1 = c2 -> []
+  | (Unit, Pattern.Unit _) -> []
+  | (Tuple l1, Pattern.Tuple (loc, l2)) ->
+    let rec aux = function
+      | [], [] -> []
+      | x1 :: r1, x2 :: r2 ->
+        compute_pattern x1 x2 @ aux (r1, r2)
+      | _ -> raise (Mismatch_pattern (Pattern.Tuple (loc, l2), Tuple l1))
+    in aux (l1, l2)
+  | (Variant (n1, e1), Pattern.Variant (_, n2, e2)) when n1 = n2 ->
+    compute_pattern e1 e2
+  | _ -> raise Pattern_matching_fail

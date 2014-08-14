@@ -1,8 +1,9 @@
 # OASIS_START
-# DO NOT EDIT (digest: 6563391bcdb7e5ccc971360f3a5aa222)
+# DO NOT EDIT (digest: 32474afbacdda883281e26e3153d69a8)
 Location
 Lexer
 Parser
+Pattern
 Ast
 Type
 Gamma

@@ -263,7 +263,7 @@ let rec unification ?(gamma = Gamma.empty) t1 t2 =
     | Type.App (c1, a1), Type.App (c2, a2) ->
       unification ~gamma c1 c2;
       begin
-        try List.iter2 (unification ~gamma) a1 a2
+        try List.iter2 (fun a1 a2 -> unification ~gamma a1 a2) a1 a2
         with Invalid_argument "List.iter2" -> raise (Conflict (t1, t2))
       end
     | Type.Arrow (a1, r1), Type.Arrow (a2, r2) ->
@@ -330,11 +330,11 @@ let rec unification ?(gamma = Gamma.empty) t1 t2 =
 
     | Type.Alias (n1, ty1), Type.Const n2 when n1 = n2 ->
       let (s, ty2) = expand ~gamma (Type.Const n2) in
-      if s then unification ty1 ty2
+      if s then unification ~gamma ty1 ty2
       else raise (Conflict (ty1, ty2))
     | Type.Const n1, Type.Alias (n2, ty2) when n1 = n2 ->
       let (s, ty1) = expand ~gamma (Type.Const n1) in
-      if s then unification ty1 ty2
+      if s then unification ~gamma ty1 ty2
       else raise (Conflict (ty1, ty2))
     | Type.Alias (_, ty1), ty2 -> unification ~gamma ty1 ty2
     | ty1, Type.Alias (_, ty2) -> unification ~gamma ty1 ty2
@@ -516,9 +516,9 @@ let rec eval
   | Ast.Abs (loc, a, c) ->
 
     (** To infer the type of functions, we first extend the environment with the
-        types of the parameters, which might be annoted. We remember all new type
-        variables that appear in parameter types in [lstvar] so that we can later
-        make sure that none of them was unified with polymorphic type.
+        types of the parameters, which might be annoted. We remember all new
+        type variables that appear in parameter types in [lstvar] so that we
+        can later make sure that none of them was unified with polymorphic type.
 
         We then infer the type of the function body using the extended
         environment, and instantiate it unless it's annotated.
@@ -646,16 +646,29 @@ let rec eval
        unification ~gamma (Type.Set ty |> expand ~gamma |> snd) (Type.Set v');
        Type.Alias (name, Type.Set ty))
     >!= raise_with_loc loc
+  | Ast.Match (loc, expr, patterns) ->
+    (fun () ->
+      let ty = eval ~gamma ~env ~level expr in
+      let rt = Variable.make (level + 1) in
+      let compute_branch (pattern, expr) =
+        let (ty', env) = compute_pattern gamma env level pattern in
+        unification ~gamma ty ty';
+        let rt' = eval ~gamma ~env ~level expr in
+        unification ~gamma rt rt'
+      in
+      List.iter compute_branch patterns;
+      rt)
+    >!= raise_with_loc loc
 
 (** compute_argument : after infering the type of argument, we use the function
-    [subsume] (or [unification] if the argument is annotated) to determine if the
-    parameter type is an instance of the type of the argument.
+    [subsume] (or [unification] if the argument is annotated) to determine if
+    the parameter type is an instance of the type of the argument.
 
     When calling functions with multiple arguments, we must first [subsume] the
-    types of arguments for those parameters that are type variables, otherwise we
-    would fail to typecheck applications such as `(revapply id poly), where
+    types of arguments for those parameters that are type variables, otherwise
+    we would fail to typecheck applications such as `(revapply id poly), where
     `revapply : (forall (a b) (a -> (a -> b) -> b))`,
-    `poly : ((forall (a) (a -> a ->)) -> (pair int bool))` and
+    `poly : ((forall (a) (a -> a ->)) -> (\* int bool))` and
     `id` : (forall (a) (a -> a)).
 
     @param gamma all definitions
@@ -682,3 +695,34 @@ and compute_argument gamma env level tys a =
        then unification ~gamma ty ty'
        else subsume ~gamma ~level ty ty')
     slst
+
+and compute_pattern gamma env level = function
+  | Pattern.Var (_, name) ->
+    let ty = Variable.make (level + 1) in
+    (ty, Environment.extend env name ty)
+  | Pattern.Bool _ -> (Type.Const "bool", env)
+  | Pattern.Int _ -> (Type.Const "int", env)
+  | Pattern.Char _ -> (Type.Const "char", env)
+  | Pattern.Unit _ -> (Type.Const "unit", env)
+  | Pattern.Tuple (_, l) ->
+    let (tys, new_env) =
+      List.fold_left
+        (fun (tys, env) x ->
+          let (ty, new_env) = compute_pattern gamma env level x in
+          (ty :: tys, new_env))
+        ([], env) l
+    in (Type.App (Type.Const "*", List.rev tys), new_env)
+  | Pattern.Variant (_, ctor, expr) ->
+    let (name, ty) =
+      try
+        let (name, ty) = Gamma.Datatype.lookup ctor gamma in
+        let ty = ty
+                 |> Type.copy
+                 |> function Type.Set l -> l
+                           | _ -> raise (Unbound_constructor ctor)
+        in (name, ty)
+      with Not_found -> raise (Unbound_constructor ctor)
+    in
+    let (sty, new_env) = compute_pattern gamma env level expr in
+    let ty = Type.Set.add ctor sty ty in
+    (Type.Alias (name, Type.Set ty), new_env)
