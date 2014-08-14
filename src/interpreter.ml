@@ -113,16 +113,15 @@ let rec eval env = function
     eval (Environment.add name (eval env value) env) expr
 
   (**
-   * It is impossible to add the definition of the function in the environment
-   * - this would imply that in the environment definition of this new
-   * feature, we add the definition of the same function - it would a loop at
-   * infinity.
-   *
-   * The Closure model therefore includes a string option indicating whether
-   * it is recursive or not. Thus, during application thereof, is added to the
-   * environment, without having cyclic recursively.
-  *)
+      It is impossible to add the definition of the function in the environment
+      - this would imply that in the environment definition of this new
+      feature, we add the definition of the same function - it would a loop at
+      infinity.
 
+      The Closure model therefore includes a string option indicating whether
+      it is recursive or not. Thus, during application thereof, is added to the
+      environment, without having cyclic recursively.
+  *)
   | Ast.Rec (loc, name, value, expr) ->
     (fun () ->
        eval env value

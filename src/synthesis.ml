@@ -100,24 +100,23 @@ let () = Printexc.register_printer
       | _ -> None)
 
 (** compute_variable : makes sure that the type variable being
-  * unified doesn't occur within the it is being unified with.
-  *
-  * Each variable has a "level", which indicates how definition has been
-  * created. The higher the level, the higher the variable has been introduced
-  * recently. When assigning a variable V by a type T, we must preserve this
-  * information. In particular, if the type T contains variables that higher
-  * level, it is necessary to lower the level of these variables at V.
-  * Everything must happen as if, instead of having introduced a variable to a
-  * certain date and then determined its value by unification, we had guessed
-  * the correct value at the Introduction of the variable.
-  *
-  * @param id id of `Unbound` type variable to prevent circularity
-  * @param level level of `Unbound` type
-  * @param ty type with wich we will unify
-  *
-  * @raise Recursive_type if [id] is found is [ty]
-*)
+    unified doesn't occur within the it is being unified with.
 
+    Each variable has a "level", which indicates how definition has been
+    created. The higher the level, the higher the variable has been introduced
+    recently. When assigning a variable V by a type T, we must preserve this
+    information. In particular, if the type T contains variables that higher
+    level, it is necessary to lower the level of these variables at V.
+    Everything must happen as if, instead of having introduced a variable to a
+    certain date and then determined its value by unification, we had guessed
+    the correct value at the Introduction of the variable.
+
+    @param id id of `Unbound` type variable to prevent circularity
+    @param level level of `Unbound` type
+    @param ty type with wich we will unify
+
+    @raise Recursive_type if [id] is found is [ty]
+*)
 let compute_variable id level ty =
   let rec aux = function
     | Type.Var { contents = Type.Link ty } -> aux ty
@@ -138,14 +137,13 @@ let compute_variable id level ty =
   in aux ty
 
 (** substitution : takes a list of `Bound` variables [ids], a list of
- * replacement types [tys] and type a type [ty]. Returns a new type [ty]
- * with `Bound` variables substitued with respective replacement types.
- *
- * @param ids list of id of `Bound` variables
- * @param tys list of type for replace with respective id
- * @param ty type to apply modification
-*)
+    replacement types [tys] and type a type [ty]. Returns a new type [ty]
+    with `Bound` variables substitued with respective replacement types.
 
+    @param ids list of id of `Bound` variables
+    @param tys list of type for replace with respective id
+    @param ty type to apply modification
+*)
 let substitution ids tys ty =
   let rec aux map = function
     | Type.Const _ as ty -> ty
@@ -184,18 +182,17 @@ let catch_generic_variable ty =
   in aux ty; set
 
 (** union : takes a list of `Generic` type variables and types [ty1] and type
- * [ty2] and checks if any of the `Generic` type variables appears in any of
- * the sets of free generic variables in [ty1] or [ty2].
- *
- * See [catch_generic_variable] for capturing free generic variables.
- *
- * @param lst list of `Generic` type variables
- * @param ty1
- * @param ty2
- *
- * @return true if a `Generic` type variables appears in [ty1] or [ty2]
-*)
+    [ty2] and checks if any of the `Generic` type variables appears in any of
+    the sets of free generic variables in [ty1] or [ty2].
 
+    See [catch_generic_variable] for capturing free generic variables.
+
+    @param lst list of `Generic` type variables
+    @param ty1
+    @param ty2
+
+    @return true if a `Generic` type variables appears in [ty1] or [ty2]
+*)
 let union lst ty1 ty2 =
   let set1 = catch_generic_variable ty1 in
   let set2 = catch_generic_variable ty2 in
@@ -203,13 +200,12 @@ let union lst ty1 ty2 =
     (fun var -> UnitSet.mem set1 var || UnitSet.mem set2 var) lst
 
 (** expand : expands type by replacing its alias with new bodies to which
- * they are linked. The function returns the standard type and a [bool]
- * notifier if an alias was expanded.
- *
- * @param gamma all definitions
- * @param ty type expand
-*)
+    they are linked. The function returns the standard type and a [bool]
+    notifier if an alias was expanded.
 
+    @param gamma all definitions
+    @param ty type expand
+*)
 let rec expand ~gamma = function
   | Type.Const name ->
     begin
@@ -242,25 +238,24 @@ let rec expand ~gamma = function
   | ty -> (false, ty)
 
 (** unification : takes two types and tries to them, i.e. determine if they can
- * be equal. Type constants unify with identical type contents, and arrow types
- * and other structured types are unified by unifying each of their components.
- * After first performing an "occurs check" (see [compute_variable]), unbound
- * type variables can be unified with any type by replacing their reference with
- * a link pointing to the other type T.
- *
- * If type T pointed is known, it should not reduce the variable type T since
- * it can be shared by other variables and we could break links.
- *
- * @param gamma all definitions
- * @param t1
- * @param t2
- *
- * @raise Conflict if can not unify t1 and t2 (ex: unify int bool)
- * @raise Circularity if [ty1] is dependent with [ty2]
- * @raise Variable_no_instantiated if found `Bound` type variable. Indeed, it's
- * normally impossible after a substitution by `Forall` normalized expression.
-*)
+    be equal. Type constants unify with identical type contents, and arrow types
+    and other structured types are unified by unifying each of their components.
+    After first performing an "occurs check" (see [compute_variable]), unbound
+    type variables can be unified with any type by replacing their reference with
+    a link pointing to the other type T.
 
+    If type T pointed is known, it should not reduce the variable type T since
+    it can be shared by other variables and we could break links.
+
+    @param gamma all definitions
+    @param t1
+    @param t2
+
+    @raise Conflict if can not unify t1 and t2 (ex: unify int bool)
+    @raise Circularity if [ty1] is dependent with [ty2]
+    @raise Variable_no_instantiated if found `Bound` type variable. Indeed, it's
+    normally impossible after a substitution by `Forall` normalized expression.
+*)
 let rec unification ?(gamma = Gamma.empty) t1 t2 =
   if t1 == t2 then ()
   else match t1, t2 with
@@ -294,19 +289,18 @@ let rec unification ?(gamma = Gamma.empty) t1 t2 =
       var := Type.Link ty
 
     (** First, we create a fresh `Generic` type variable for every type
-     * variable bound by the two polymorphic types. Here, we rely on the fact
-     * that both types are normalized (see [normalize]), so equivalent generic
-     * type variables should appear in the same locations in both types.
-     *
-     * Then, we substitute all `Bound` type variables in both types with
-     * `Generic` type variables, an try to unify them.
-     *
-     * If unification success, we check that none of the `Generic` type
-     * variables escapes, otherwise, we would successfilly unify types
-     * `(forall (a) (a -> a))` and `(forall (a) (a -> b))`, where `b` is a
-     * unifiable `Unbound` type variable.
-    *)
+        variable bound by the two polymorphic types. Here, we rely on the fact
+        that both types are normalized (see [normalize]), so equivalent generic
+        type variables should appear in the same locations in both types.
 
+        Then, we substitute all `Bound` type variables in both types with
+        `Generic` type variables, an try to unify them.
+
+        If unification success, we check that none of the `Generic` type
+        variables escapes, otherwise, we would successfilly unify types
+        `(forall (a) (a -> a))` and `(forall (a) (a -> b))`, where `b` is a
+        unifiable `Unbound` type variable.
+    *)
     | (Type.Forall (ids1, ty1) as forall1),
       (Type.Forall (ids2, ty2) as forall2) ->
       let lst =
@@ -319,6 +313,10 @@ let rec unification ?(gamma = Gamma.empty) t1 t2 =
       if union lst forall1 forall2
       then raise (Conflict (forall1, forall2))
 
+
+    (** The unification of the variants is done by comparing the names of
+        constructor and types respectively.
+    *)
     | Type.Set l1, Type.Set l2 ->
       begin
         try
@@ -344,9 +342,9 @@ let rec unification ?(gamma = Gamma.empty) t1 t2 =
     | ty1, ty2 -> raise (Conflict (ty1, ty2))
 
     (** Sometimes we try to unify a standardized type with an Alias. In this
-     * case, we try to expand the two types and if this treatment notify
-     * us expand an alias, it restarts the unification with standardized
-     * types.
+        case, we try to expand the two types and if this treatment notify
+        us expand an alias, it restarts the unification with standardized
+        types.
     *)
 
     (*
@@ -394,13 +392,12 @@ let specialization level ty =
 *)
 
 (** specialization : instantiates a `Forall` type by substituting bound type
- * variables by fresh `Unbound` type variables, wich can then by unified with
- * any other type.
- *
- * @param level level for create `Unbound` type variable
- * @param ty type to apply modification
-*)
+    variables by fresh `Unbound` type variables, wich can then by unified with
+    any other type.
 
+    @param level level for create `Unbound` type variable
+    @param ty type to apply modification
+*)
 let specialization level ty =
   let rec aux level = function
     | Type.Forall (ids, ty) ->
@@ -412,7 +409,6 @@ let specialization level ty =
   in aux level ty
 
 (** specialization_annotation : same as specialization but for annotation *)
-
 let specialization_annotation level (lst, ty) =
   let aux = function
     | [], ty -> [], ty
@@ -422,13 +418,12 @@ let specialization_annotation level (lst, ty) =
   in aux (lst, ty)
 
 (** generalization : transforms a type into a `Forall` type by substituting all
- * `Unbound` type variables, with levels higher then the [level] with `Bound`
- * type variables. The traverse order is same as Parse.replace.
- *
- * @param level date of declaration
- * @param ty type to apply modification
-*)
+    `Unbound` type variables, with levels higher then the [level] with `Bound`
+    type variables. The traverse order is same as Parse.replace.
 
+    @param level date of declaration
+    @param ty type to apply modification
+*)
 let generalization level ty =
   let acc = ref [] in
   let rec aux = function
@@ -472,25 +467,24 @@ let rec compute_function n = function
   | _ as ty -> raise (Expected_function ty)
 
 (** subsume : takes two types [ty1] [ty2] and determines if [ty1] is an of
- * [ty2]. For example, `(int -> int)` is an instance of
- * `(forall (a) (a -> a))` (the type of `id`) which in turn is an instance
- * of `(foralle (a b) (a -> b))` (type of `magic`). This means that we can
- * pass `id` as an argument to a function expecting `(int -> int)` and we can
- * pass `magic` to a function expecing `(forall (a) (a -> a))` but not the
- * other way round. To determine if [ty1] is an instance of [ty2], [subsume]
- * first instantiates [ty2], the more general type, with `Unbound` type
- * varibales. If [ty1] is not polymorphic, is simply unifies the two types.
- * Otherwise, it instantiates [ty1] with `Generic` type variables and uunifies
- * both instantiated types. If unification success, we check that no generic
- * variables escapes (see [union]).
- *
- * @param level level for make specializationon [ty2]
- * @param ty1
- * @param ty2
- *
- * @raise No_instance if [ty1] is not an instance of [ty2]
-*)
+    [ty2]. For example, `(int -> int)` is an instance of
+    `(forall (a) (a -> a))` (the type of `id`) which in turn is an instance
+    of `(foralle (a b) (a -> b))` (type of `magic`). This means that we can
+    pass `id` as an argument to a function expecting `(int -> int)` and we can
+    pass `magic` to a function expecing `(forall (a) (a -> a))` but not the
+    other way round. To determine if [ty1] is an instance of [ty2], [subsume]
+    first instantiates [ty2], the more general type, with `Unbound` type
+    varibales. If [ty1] is not polymorphic, is simply unifies the two types.
+    Otherwise, it instantiates [ty1] with `Generic` type variables and uunifies
+    both instantiated types. If unification success, we check that no generic
+    variables escapes (see [union]).
 
+    @param level level for make specializationon [ty2]
+    @param ty1
+    @param ty2
+
+    @raise No_instance if [ty1] is not an instance of [ty2]
+*)
 let subsume ~gamma ~level ty1 ty2 =
   let ty2' = specialization level ty2 in
   match Type.unlink ty1 with
@@ -522,19 +516,18 @@ let rec eval
   | Ast.Abs (loc, a, c) ->
 
     (** To infer the type of functions, we first extend the environment with the
-     * types of the parameters, which might be annoted. We remember all new type
-     * variables that appear in parameter types in [lstvar] so that we can later
-     * make sure that none of them was unified with polymorphic type.
-     *
-     * We then infer the type of the function body using the extended
-     * environment, and instantiate it unless it's annotated.
-     *
-     * Finally, we generalize the resulting function type.
-     *
-     * @raise Polymorphic_argument_inferred if a parameter has been unified
-     * with polymorphic type
-    *)
+        types of the parameters, which might be annoted. We remember all new type
+        variables that appear in parameter types in [lstvar] so that we can later
+        make sure that none of them was unified with polymorphic type.
 
+        We then infer the type of the function body using the extended
+        environment, and instantiate it unless it's annotated.
+
+        Finally, we generalize the resulting function type.
+
+        @raise Polymorphic_argument_inferred if a parameter has been unified
+        with polymorphic type
+    *)
     (fun () ->
        let refenv = ref env in
        let lstvar = ref [] in
@@ -565,13 +558,12 @@ let rec eval
   | Ast.App (loc, f, a) ->
 
     (** To infer the type of function application we first infer the type of the
-     * function being called, instantiate it and separate parameter types from
-     * function return type.
-     *
-     * The core of the algorithm is infering argument types in the function
-     * [compute_argument].
-    *)
+        function being called, instantiate it and separate parameter types from
+        function return type.
 
+        The core of the algorithm is infering argument types in the function
+        [compute_argument].
+    *)
     (fun () ->
        let f' = eval ~gamma ~env ~level:(level + 1) f in
        let f' = expand ~gamma f' |> snd in
@@ -602,10 +594,9 @@ let rec eval
   | Ast.Ann (loc, e, (lst, ty)) ->
 
     (** Infering type annotation `expr : type` is equivalent to inferring the
-     * type of function call `((lambda (x : type) x) expr)`, but optimized in
-     * this implementation of [eval].
+        type of function call `((lambda (x : type) x) expr)`, but optimized in
+        this implementation of [eval].
     *)
-
     (fun () ->
        let _, ty_expanded = expand ~gamma ty in
        let _, ty_expanded =
@@ -655,23 +646,22 @@ let rec eval
     >!= raise_with_loc loc
 
 (** compute_argument : after infering the type of argument, we use the function
- * [subsume] (or [unification] if the argument is annotated) to determine if the
- * parameter type is an instance of the type of the argument.
- *
- * When calling functions with multiple arguments, we must first [subsume] the
- * types of arguments for those parameters that are type variables, otherwise we
- * would fail to typecheck applications such as `(revapply id poly), where
- * `revapply : (forall (a b) (a -> (a -> b) -> b))`,
- * `poly : ((forall (a) (a -> a ->)) -> (pair int bool))` and
- * `id` : (forall (a) (a -> a)).
- *
- * @param gamma all definitions
- * @param env environment
- * @param level level for [subsume] and [eval]
- * @param tys list of types of arguments
- * @param a list of arguments
-*)
+    [subsume] (or [unification] if the argument is annotated) to determine if the
+    parameter type is an instance of the type of the argument.
 
+    When calling functions with multiple arguments, we must first [subsume] the
+    types of arguments for those parameters that are type variables, otherwise we
+    would fail to typecheck applications such as `(revapply id poly), where
+    `revapply : (forall (a b) (a -> (a -> b) -> b))`,
+    `poly : ((forall (a) (a -> a ->)) -> (pair int bool))` and
+    `id` : (forall (a) (a -> a)).
+
+    @param gamma all definitions
+    @param env environment
+    @param level level for [subsume] and [eval]
+    @param tys list of types of arguments
+    @param a list of arguments
+*)
 and compute_argument gamma env level tys a =
   let plst = List.combine tys a in
   let get_ordering ty arg =
