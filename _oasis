@@ -1,17 +1,28 @@
 OASISFormat:             0.4
-Name:                    dscheme
+Name:                    dsh
 Version:                 0.1
 Synopsis:                Typed Scheme
 Authors:                 Romain Calascibetta
 License:                 MIT
 Plugins:                 META (0.4), DevFiles (0.4)
 BuildTools:              ocamlbuild
+AlphaFeatures:           ocamlbuild_more_args
 
 Library dsh
   Path:                  src
   Modules:               Location, Lexer, Parser, Ast, Type, Gamma, Synthesis,
                          Core, Interpreter
   BuildDepends:          batteries
+
+Document "dsh"
+  Type:                  ocamlbuild (0.4)
+  BuildTools:            ocamldoc
+  Title:                 "dsh"
+  PostCommand:           cp dsh.docdir/*.html doc/
+  XOCamlbuildPath:       src
+  XOCamlbuildLibraries:  dsh
+  XOCamlbuildExtraArgs:
+    "-docflags '-colorize-code -keep-code -charset utf-8'"
 
 Executable dsh
   Path:                  bin
