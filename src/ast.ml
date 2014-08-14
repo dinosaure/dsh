@@ -13,6 +13,7 @@ type t =
   | Char of (Location.t * char)
   | Alias of (Location.t * string * Type.t * t)
   | Variant of (Location.t * string * t)
+  | Tuple of (Location.t * t list)
 and annotation = (int list * Type.t)
 
 module Buffer = struct
@@ -67,6 +68,7 @@ let loc = function
   | Char (loc, _) -> loc
   | Alias (loc, _, _, _) -> loc
   | Variant (loc, _, _) -> loc
+  | Tuple (loc, _) -> loc
 
 let rec is_annotated = function
   | Ann (_, _, _) -> true
@@ -126,4 +128,7 @@ let to_string tree =
       Printf.bprintf buffer "(%s %a)"
         ctor
         compute expr
+    | Tuple (_, l) ->
+      Printf.bprintf buffer "(%a)"
+        (Buffer.add_list ~sep:", " compute) l
   in compute buffer tree; Buffer.contents buffer

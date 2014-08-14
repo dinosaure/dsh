@@ -23,7 +23,7 @@ let char_of_hexa a b =
 
 let name =
   ['_' 'A'-'Z' 'a'-'z' '=' '!' '<' '>' '+' '-' '*' '/' '%' '#' '|']+
-  ['_' 'A'-'Z' 'a'-'z' '0'-'9'] * ['\''] * | [ ',' ]
+  ['_' 'A'-'Z' 'a'-'z' '0'-'9'] * ['\''] *
 let ctor =
   ['A'-'Z']+ ['_' 'A'-'Z' 'a'-'z' '0'-'9'] * ['\''] *
 let digit = ['0'-'9']
@@ -39,9 +39,11 @@ rule token = parse
   | ')'                                   { Parser.RPAR }
   | '['                                   { Parser.LBRA }
   | ']'                                   { Parser.RBRA }
-  | ':'                                   { Parser.COMMA }
+  | ':'                                   { Parser.COLON }
   | ';'                                   { Parser.SEMICOLON }
   | '|'                                   { Parser.PIPE }
+  | ','                                   { Parser.COMMA }
+  | "match"                               { Parser.MATCH }
   | "lambda"                              { Parser.LAMBDA }
   | "let"                                 { Parser.LET }
   | "rec"                                 { Parser.REC }
@@ -68,9 +70,11 @@ let string_of_token = function
   | Parser.RPAR -> ")"
   | Parser.LBRA -> "["
   | Parser.RBRA -> "]"
-  | Parser.COMMA -> ":"
+  | Parser.COLON -> ":"
   | Parser.SEMICOLON -> ";"
   | Parser.PIPE -> "|"
+  | Parser.COMMA -> ","
+  | Parser.MATCH -> "match"
   | Parser.LET -> "let"
   | Parser.REC -> "rec"
   | Parser.LAMBDA -> "lambda"

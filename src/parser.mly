@@ -62,9 +62,9 @@ let reduce (lst, stop) startpos endpos =
 %token <int> NUMBER
 %token <bool> BOOL
 %token <char> CHAR
-%token LET LAMBDA FORALL SOME REC IF TYPE
+%token MATCH LET LAMBDA FORALL SOME REC IF TYPE
 %token LPAR RPAR LBRA RBRA
-%token ARROW COMMA SEMICOLON PIPE
+%token ARROW COMMA SEMICOLON PIPE COLON
 %token EOF
 
 %start single_expr
@@ -126,7 +126,8 @@ expr:
   | LPAR c = CTOR e = expr RPAR
   { Ast.Variant (Location.make $startpos $endpos, c, e) }
 
-
+  | LPAR l = ulist(COMMA, expr) RPAR
+  { Ast.Tuple (Location.make $startpos $endpos, l) }
   | c = CTOR
   { let pos = Location.make $startpos $endpos in
     Ast.Variant (pos, c, Ast.Unit pos) }
@@ -140,7 +141,7 @@ expr:
   { Ast.App (Location.make $startpos $endpos, o, [a; b]) }
   | LPAR IF i = expr a = expr b = expr RPAR
   { Ast.If (Location.make $startpos $endpos, i, a, b) }
-  | a = expr COMMA n = ann
+  | a = expr COLON n = ann
   { Ast.Ann (Location.make $startpos $endpos, a, n) }
   | LBRA lst = alist(SEMICOLON, expr) RBRA
   { reduce lst $startpos $endpos }
@@ -155,10 +156,27 @@ expr:
   | LPAR RPAR
   { Ast.Unit (Location.make $startpos $endpos) }
 
+(*
+pattern:
+  | c = CTOR
+  { let pos = Location.make $startpos $endpos in
+    Pattern.Variant (pos, c, Pattern.Unit pos) }
+  | LPAR c = CTOR e = pattern RPAR
+  { Pattern.Variant (Location.make $startpos $endpos, c, e) }
+  | n = NAME
+  { Pattern.Var (Location.make $startpos $endpos, n) }
+  | i = NUMBER
+  { Pattern.Int (Location.make $startpos $endpos, i) }
+  | b = BOOL
+  { Pattern.Bool (Location.make $startpos $endpos, b) }
+  | c = CHAR
+  { Pattern.Char (Location.make $startpos $endpos, c) }
+*)
+
 param:
   | x = NAME
   { (x, None) }
-  | x = NAME COMMA n = ann
+  | x = NAME COLON n = ann
   { (x, Some n) }
 
 ty_variant:

@@ -40,8 +40,8 @@ let tests =
     ("(let (x (lambda (y) y)) x)", OK ("(forall (a) (a -> a))"));
     ("(lambda (x) x)", OK ("(forall (a) (a -> a))"));
     ("(lambda (x) x)", OK ("(forall (int) (int -> int))"));
-    (",", OK ("(forall (a b) (a -> b -> (pair a b)))"));
-    (",", OK ("(forall (z x) (x -> z -> (pair x z)))"));
+    ("(lambda (a b) (a, b))", OK ("(forall (a b) (a -> b -> (* a b)))"));
+    ("(lambda (a b) (a, b))", OK ("(forall (z x) (x -> z -> (* x z)))"));
     ("(lambda (x) (let (y (lambda (z) z)) y))",
      OK ("(forall (a b) (a -> (b -> b)))"));
     ("(let (f (lambda (x) x)) (let (id (lambda (y) y)) (= f id)))",
@@ -55,9 +55,9 @@ let tests =
      OK ("bool"));
     ("(let (f (lambda (x) x)) (= f succ))",
      OK ("bool"));
-    ("(let (f (lambda (x) x)) [(f 1), (f true)])",
-     OK ("(pair int bool)"));
-    ("(lambda (f) [(f 1), (f true)])",
+    ("(let (f (lambda (x) x)) ((f 1), (f true)))",
+     OK ("(* int bool)"));
+    ("(lambda (f) ((f 1), (f true)))",
      Fail (Synthesis.Conflict (Type.Const "int", Type.Const "bool")));
     ("(let (f (lambda (x y) (let (a (= x y)) [x = y]))) f)",
      OK ("(forall (a) (a -> a -> bool))"));
@@ -105,10 +105,10 @@ let tests =
     ("(let (apply (lambda (f) (lambda (x) (f x)))) apply)",
      OK ("(forall (a b) ((a -> b) -> a -> b))"));
     ("ids", OK "(list (forall (a) (a -> a)))");
-    ("(lambda (f) [(f 1), (f true)])",
+    ("(lambda (f) ((f 1), (f true)))",
      Fail (Synthesis.Conflict (Type.Const "int", Type.Const "bool")));
-    ("(lambda (f : (forall (a) (a -> a))) [(f true), (f 1)])",
-     OK ("(((forall (a) (a -> a))) -> (pair bool int))"));
+    ("(lambda (f : (forall (a) (a -> a))) ((f true), (f 1)))",
+     OK ("(((forall (a) (a -> a))) -> (* bool int))"));
     ("(cons ids nill)", OK ("(list (list (forall (a) (a -> a))))"));
     ("(choose ids nill)", OK ("(list (forall (a) (a -> a)))"));
     ("(choose nill ids)", OK ("(list (forall (a) (a -> a)))"));
@@ -117,12 +117,12 @@ let tests =
      OK ("(list (forall (a) (a -> a)))"));
     ("(cons id ids)", OK ("(list (forall (a) (a -> a)))"));
     ("(cons id (cons succ nill))", OK ("(list (int -> int))"));
-    ("(poly id)", OK ("(pair int bool)"));
-    ("(poly (lambda (x) x))", OK ("(pair int bool)"));
+    ("(poly id)", OK ("(* int bool)"));
+    ("(poly (lambda (x) x))", OK ("(* int bool)"));
     ("(poly succ)",
      Fail (Synthesis.Conflict (Variable.dummy, Type.Const "int")));
     ("(apply succ 1)", OK ("int"));
-    ("(apply poly id)", OK ("(pair int bool)"));
+    ("(apply poly id)", OK ("(* int bool)"));
     ("(id : (forall (a) (a -> a))) : (int -> int)", OK ("(int -> int)"));
     ("(single (id : (forall (a) (a -> a))))",
      OK ("(list (forall (a) (a -> a)))"));
@@ -134,11 +134,11 @@ let tests =
     ("(id' id)", OK ("(forall (a) (a -> a))"));
     ("(id'' id)", OK ("(forall (a) (a -> a))"));
     ("(lambda (ids) (ids' ids))", Unsafe);
-    ("(poly (id id))", OK ("(pair int bool)"));
+    ("(poly (id id))", OK ("(* int bool)"));
     ("(length (ids))", OK ("int"));
     ("(map head (single ids))", OK ("(list (forall (a) (a -> a)))"));
     ("(apply id 1)", OK ("int"));
-    ("(poly magic)", OK ("(pair int bool)"));
+    ("(poly magic)", OK ("(* int bool)"));
     ("(magid magic)", OK ("(forall (a b) (a -> b))"));
     ("(lambda (f : (forall (a b) (a -> b))) (f : (forall (a) (a -> a))))",
      OK ("((forall (a b) (a -> b)) -> (forall (a) (a -> a)))"));

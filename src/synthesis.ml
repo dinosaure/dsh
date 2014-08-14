@@ -260,8 +260,8 @@ let rec unification ?(gamma = Gamma.empty) t1 t2 =
   if t1 == t2 then ()
   else match t1, t2 with
     | Type.Const n1, Type.Const n2 when n1 = n2 -> ()
-    | Type.App (t1, a1), Type.App (t2, a2) ->
-      unification ~gamma t1 t2;
+    | Type.App (c1, a1), Type.App (c2, a2) ->
+      unification ~gamma c1 c2;
       begin
         try List.iter2 (unification ~gamma) a1 a2
         with Invalid_argument "List.iter2" -> raise (Conflict (t1, t2))
@@ -625,6 +625,8 @@ let rec eval
   | Ast.Bool _ -> Type.Const "bool"
   | Ast.Char _ -> Type.Const "char"
   | Ast.Unit _ -> Type.Const "unit"
+  | Ast.Tuple (_, l) ->
+    Type.App (Type.Const "*", List.map (eval ~gamma ~env ~level) l)
 
   | Ast.Variant (loc, ctor, expr) ->
     (fun () ->

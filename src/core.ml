@@ -41,9 +41,8 @@ let core =
   |> add "and     : (bool -> bool -> bool)"
   |> add "or      : (bool -> bool -> bool)"
 
-  |> add ",       : (forall (a b) (a -> b -> (pair a b)))"
-  |> add "fst     : (forall (a b) ((pair a b) -> a))"
-  |> add "snd     : (forall (a b) ((pair a b) -> b))"
+  |> add "fst     : (forall (a b) ((* a b) -> a))"
+  |> add "snd     : (forall (a b) ((* a b) -> b))"
 
   |> add "#num    : (int -> unit)"
   |> add "#bln    : (bool -> unit)"
@@ -51,7 +50,7 @@ let core =
 
   |> add "any     : (forall (a) a)"
   |> add "magic   : (forall (a b) (a -> b))"
-  |> add "poly    : ((forall (a) (a -> a)) -> (pair int bool))"
+  |> add "poly    : ((forall (a) (a -> a)) -> (* int bool))"
   |> add "special : (((forall (a) (a -> a)) -> (forall (a) (a -> a)))
                      -> (forall (a) (a -> a)))"
   |> add "id'     : ((forall (a) (a -> a)) -> (forall (a) (a -> a)))"

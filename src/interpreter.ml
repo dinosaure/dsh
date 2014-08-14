@@ -139,3 +139,4 @@ let rec eval env = function
   | Ast.Unit _ -> Unit
   | Ast.Alias (_, _, _, expr) -> eval env expr
   | Ast.Variant (_, ctor, expr) -> Variant (ctor, eval env expr)
+  | Ast.Tuple (_, l) -> Tuple (List.map (eval env) l)
