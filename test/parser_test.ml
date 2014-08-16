@@ -16,6 +16,8 @@ module Ast_without_loc = struct
     | Unit
     | Alias of (string * Type.t * t)
     | Variant of (string * t)
+    | Tuple of t list
+    | Match of (t * (Pattern.t * t) list)
   and annotation = (int list * Type.t)
 
   let rec to_ast = function
@@ -33,6 +35,11 @@ module Ast_without_loc = struct
     | Unit -> Ast.Unit (Location.dummy)
     | Alias (n, t, e) -> Ast.Alias (Location.dummy, n, t, to_ast e)
     | Variant (c, e) -> Ast.Variant (Location.dummy, c, to_ast e)
+    | Tuple l -> Ast.Tuple (Location.dummy, List.map to_ast l)
+    | Match (e, l) ->
+      Ast.Match (Location.dummy,
+                 to_ast e,
+                 List.map (fun (p, e) -> (p, to_ast e)) l)
 
   let rec of_ast = function
     | Ast.Var (_, name) -> Var name
@@ -49,6 +56,9 @@ module Ast_without_loc = struct
     | Ast.Unit _ -> Unit
     | Ast.Alias (_, n, t, e) -> Alias (n, t, of_ast e)
     | Ast.Variant (_, c, e) -> Variant (c, of_ast e)
+    | Ast.Tuple (_, l) -> Tuple (List.map of_ast l)
+    | Ast.Match (_, e, l) ->
+      Match (of_ast e, List.map (fun (p, e) -> (p, of_ast e)) l)
 end
 
 type t =
