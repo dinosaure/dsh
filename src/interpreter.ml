@@ -83,11 +83,10 @@ let rec eval env = function
     >!= raise_with_loc loc
 
   (** The `if` is a primitive language because evaluation must be lazy. Indeed,
-    * in a policy call-by-value, in the case of a recursive definition, we will
-    * evaluate the `if` arguments independently of the predicat that would a
-    * loop infinite.
+      in a policy call-by-value, in the case of a recursive definition, we will
+      evaluate the `if` arguments independently of the predicat that would a
+      loop infinite.
   *)
-
   | Ast.If (loc, i, a, b) ->
     (fun () ->
        eval env i
