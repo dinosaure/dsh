@@ -16,17 +16,53 @@ end
 
 type t =
   | Const of string
+  | Primitive of string
   | App of (t * t list)
   | Arrow of (t list * t)
   | Var of var ref
   | Forall of (int list * t)
   | Alias of (string * t)
   | Set of t Set.t
+  | Constr of (int list * t)
 and var =
   | Unbound of int * int
   | Bound of int
   | Link of t
   | Generic of int
+
+module Primitive = struct
+  type t = (string, unit) Hashtbl.t
+
+  exception Primitive_already_exists of string
+
+  let () = Printexc.register_printer
+    (function
+      | Primitive_already_exists name ->
+        Some (Printf.sprintf "primitive %s already exists" name)
+      | _ -> None)
+
+  let set =
+    let empty = Hashtbl.create 16 in
+    Hashtbl.add empty "int" ();
+    Hashtbl.add empty "char" ();
+    Hashtbl.add empty "bool" ();
+    Hashtbl.add empty "unit" ();
+    empty
+
+  let add name =
+    try let _ = Hashtbl.find set name in
+        raise (Primitive_already_exists name)
+    with Not_found -> Hashtbl.add set name ()
+
+  let exists name =
+    try let _ = Hashtbl.find set name in true
+    with Not_found -> false
+
+  let int = Primitive "int"
+  let char = Primitive "char"
+  let bool = Primitive "bool"
+  let unit = Primitive "unit"
+end
 
 module Buffer = struct
   include Buffer
@@ -78,6 +114,7 @@ let rec unlink = function
 let rec is_monomorphic = function
   | Forall _ -> false
   | Const _ -> true
+  | Primitive _ -> true
   | Var { contents = Link ty } -> is_monomorphic ty
   | Var _ -> true
   | App (f, a) ->
@@ -87,6 +124,7 @@ let rec is_monomorphic = function
   | Alias (_, t) -> is_monomorphic t
   | Set l ->
     Set.for_all (fun _ -> is_monomorphic) l
+  | Constr _ -> false
 
 let memoize f =
   let cache = Hashtbl.create 16 in
@@ -110,6 +148,8 @@ let to_string ?(env = Map.empty) ty =
   let rec atom ?(first = false) env buffer = function
     | Const name ->
       Buffer.add_string buffer name
+    | Primitive name ->
+      Buffer.add_string buffer name
     | Alias (name, _) ->
       Buffer.add_string buffer name
     | App (f, a) ->
@@ -119,6 +159,11 @@ let to_string ?(env = Map.empty) ty =
     | Forall (ids, ty) ->
       let lst, env = Map.extend env ids in
       Printf.bprintf buffer "(forall (%a) %a)"
+        (Buffer.add_list ~sep:" " Buffer.add_string) lst
+        (expr ~first:true env) ty
+    | Constr (ids, ty) ->
+      let lst, env = Map.extend env ids in
+      Printf.bprintf buffer "(lambda (%a) %a)"
         (Buffer.add_list ~sep:" " Buffer.add_string) lst
         (expr ~first:true env) ty
     | Var { contents = Unbound (id, _) } ->
@@ -158,6 +203,7 @@ let to_string ?(env = Map.empty) ty =
 
 let rec copy = function
   | Const name -> Const name
+  | Primitive name -> Primitive name
   | App (f, a) -> App (copy f, List.map copy a)
   | Arrow (a, r) -> Arrow (List.map copy a, copy r)
   | Var { contents = Link a } -> Var { contents = Link (copy a) }
@@ -165,3 +211,4 @@ let rec copy = function
   | Forall (lst, ty) -> Forall (lst, copy ty)
   | Alias (s, t) -> Alias (s, copy t)
   | Set l -> Set (Set.map copy l)
+  | Constr (lst, ty) -> Constr (lst, copy ty)

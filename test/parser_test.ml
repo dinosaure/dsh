@@ -104,16 +104,16 @@ let tests =
     ("Foo x", Fail);
     ("x : (Foo | Bar)", OK (Ann (Var "x",
                             ([], Type.Set (Type.Set.of_list
-                                       [("Foo", Type.Const "unit");
-                                        ("Bar", Type.Const "unit")])))));
+                                       [("Foo", Type.Primitive.unit);
+                                        ("Bar", Type.Primitive.unit)])))));
     ("x : ((Foo int))", OK (Ann (Var "x",
                             ([], Type.Set (Type.Set.of_list
-                                       [("Foo", Type.Const "int")])))));
+                                       [("Foo", Type.Primitive.int)])))));
     ("((type) (f a) x)", Fail);
     ("(if a b c)", OK (If (Var "a", Var "b", Var "c")));
     ("((if) a b c)", Fail);
     ("(lambda (x : int) x)",
-     OK (Abs ([("x", Some ([], Type.Const "int"))], Var "x")));
+     OK (Abs ([("x", Some ([], Type.Primitive.int))], Var "x")));
     ("(lambda (x) x) : id",
      OK (Ann (Abs ([("x", None)], Var "x"), ([], Type.Const "id"))));
   ]

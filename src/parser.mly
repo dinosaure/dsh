@@ -25,6 +25,7 @@ let replace ids ty =
             var
         with Not_found -> ty
       end
+    | Primitive _ as ty -> ty
     | Var _ as ty -> ty
     | App (f, a) ->
       let f' = aux f in
@@ -39,6 +40,8 @@ let replace ids ty =
       (** see App *)
     | Forall (ids, ty) ->
       Forall (ids, aux ty)
+    | Constr (ids, ty) ->
+      Constr (ids, aux ty)
     | Alias _ -> assert false (** It's premature *)
     | Set l ->
       Set (Type.Set.map aux l)
@@ -191,13 +194,13 @@ param:
 
 ty_variant:
   | c = CTOR
-  { (c, Type.Const "unit") }
+  { (c, Type.Primitive.unit) }
   | LPAR c = CTOR ty = ty RPAR
   { (c, ty) }
 
 ty:
   | n = NAME
-  { Type.Const n }
+  { if Type.Primitive.exists n then Type.Primitive n else Type.Const n }
   | LPAR f = ty a = ty+ RPAR
   { Type.App (f, a) }
   | LPAR c = alist(ARROW, ty) RPAR
@@ -211,6 +214,11 @@ ty:
     match ids with
     | [] -> ty
     | _ -> Type.Forall (ids, ty) }
+  | LPAR LAMBDA l = slist(NAME) x = ty RPAR
+  { let (ids, ty) = replace l x in
+    match ids with
+    | [] -> ty
+    | _ -> Type.Constr (ids, ty) }
 
 ann:
   | x = ty

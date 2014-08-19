@@ -9,17 +9,29 @@ end
 
 type t =
   | Const of string
+  | Primitive of string
   | App of (t * t list)
   | Arrow of (t list * t)
   | Var of var ref
   | Forall of (int list * t)
   | Alias of (string * t)
   | Set of t Set.t
+  | Constr of (int list * t)
 and var =
   | Unbound of int * int
   | Bound of int
   | Link of t
   | Generic of int
+
+module Primitive : sig
+  val add : string -> unit
+  val exists : string -> bool
+
+  val int : t
+  val char : t
+  val bool : t
+  val unit : t
+end
 
 module Map : sig
   include Map.S with type key = int

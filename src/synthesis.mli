@@ -27,7 +27,7 @@ exception Unknown_type of string
 exception Unbound_constructor of string
 exception Error of (Location.t * exn)
 
-val unification : ?gamma:(Gamma.t) -> Type.t -> Type.t -> unit
+val unification : gamma:(Gamma.t) -> level:int -> Type.t -> Type.t -> unit
 val generalization : int -> Type.t -> Type.t
 val specialization : int -> Type.t -> Type.t
 

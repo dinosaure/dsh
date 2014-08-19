@@ -7,6 +7,7 @@ end
 module Datatype : sig
   val exists : string -> t -> bool
   val lookup : string -> t -> (string * Type.t)
+  val find : string -> t -> (string * Type.t) option
 end
 
 exception Constructor_already_exists of string

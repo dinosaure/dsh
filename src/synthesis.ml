@@ -131,7 +131,9 @@ let compute_variable id level ty =
     | Type.Arrow (a, r) ->
       List.iter aux a; aux r
     | Type.Forall (_, ty) -> aux ty
+    | Type.Constr (_, ty) -> aux ty
     | Type.Const _ -> ()
+    | Type.Primitive _ -> ()
     | Type.Alias (_, ty) -> aux ty
     | Type.Set l -> Type.Set.iter (fun _ -> aux) l
   in aux ty
@@ -147,6 +149,7 @@ let compute_variable id level ty =
 let substitution ids tys ty =
   let rec aux map = function
     | Type.Const _ as ty -> ty
+    | Type.Primitive _ as ty -> ty
     | Type.Var { contents = Type.Link ty } -> aux map ty
     | Type.Var { contents = Type.Bound id } as ty ->
       begin try Map.find id map with Not_found -> ty end
@@ -157,6 +160,8 @@ let substitution ids tys ty =
       Type.Arrow (List.map (aux map) a, aux map r)
     | Type.Forall (ids, ty) ->
       Type.Forall (ids, aux (Map.removes map ids) ty)
+    | Type.Constr (ids, ty) ->
+      Type.Constr (ids, aux (Map.removes map ids) ty)
     | Type.Alias (name, ty) -> Type.Alias (name, aux map ty)
     | Type.Set l ->
       Type.Set (Type.Set.map (aux map) l)
@@ -166,6 +171,7 @@ let catch_generic_variable ty =
   let set = UnitSet.create 16 in
   let rec aux = function
     | Type.Const _ -> ()
+    | Type.Primitive _ -> ()
     | Type.Var { contents = Type.Link ty } -> aux ty
     | Type.Var { contents = Type.Bound _ } -> ()
     | Type.Var { contents = Type.Generic _ } as ty ->
@@ -176,6 +182,7 @@ let catch_generic_variable ty =
     | Type.Arrow (a, r) ->
       List.iter aux a; aux r
     | Type.Forall (_, ty) -> aux ty
+    | Type.Constr (_, ty) -> aux ty
     | Type.Alias (_, ty) -> aux ty
     | Type.Set l ->
       Type.Set.iter (fun _ -> aux) l
@@ -206,43 +213,39 @@ let union lst ty1 ty2 =
     @param gamma all definitions
     @param ty type expand
 *)
-let rec expand ~gamma = function
-  | Type.Const name ->
-    begin
-      try (true, Type.Alias (name, Gamma.lookup name gamma |> Type.copy))
-      with Not_found -> (false, Type.Const name)
-    end
-  | Type.App (f, a) ->
-    let (s, f) = expand ~gamma f in
-    let lst = List.map (expand ~gamma) a in
-    (s || List.fold_left (fun a x -> a || fst x) false lst,
-     Type.App (f, List.map snd lst))
-  | Type.Arrow (a, r) ->
-    let lst = List.map (expand ~gamma) a in
-    let (s, r) = expand ~gamma r in
-    (List.fold_left (fun a x -> a || fst x) false lst || s,
-     Type.Arrow (List.map snd lst, r))
-  | Type.Var ({ contents = Type.Link t } as var) ->
-    let (s, v) = expand ~gamma t in
-    var := Type.Link v; (s, Type.Var var)
-  | Type.Forall (lst, ty) ->
-    let (s, ty) = expand ~gamma ty in
-    (s, Type.Forall (lst, ty))
-  | Type.Alias (name, ty) ->
-    let (s, ty) = expand ~gamma ty in
-    (s, Type.Alias (name, ty))
-  | Type.Set l ->
-    let lst = Type.Set.map (expand ~gamma) l in
-    (Type.Set.fold (fun _ x a -> a || fst x) lst false,
-     Type.Set (Type.Set.map snd lst))
-  | ty -> (false, ty)
+let rec expand ~gamma ty =
+  let is_expanded = ref false in
+  let rec aux = function
+    | Type.Const name ->
+      begin
+        try let ty = Type.Alias (name, Gamma.lookup name gamma |> Type.copy)
+            in is_expanded := true; ty
+        with Not_found -> Type.Const name
+      end
+    | Type.App (f, a) ->
+      Type.App (aux f, List.map aux a)
+    | Type.Arrow (a, r) ->
+      Type.Arrow (List.map aux a, aux r)
+    | Type.Var ({ contents = Type.Link t } as var) ->
+      var := Type.Link (aux t);
+      Type.Var var
+    | Type.Forall (lst, ty) ->
+      Type.Forall (lst, aux ty)
+    | Type.Alias (name, ty) ->
+      Type.Alias (name, aux ty)
+    | Type.Set l ->
+      Type.Set (Type.Set.map aux l)
+    | Type.Constr (lst, ty) ->
+      Type.Constr (lst, aux ty)
+    | ty -> ty
+  in let ty' = aux ty in (!is_expanded, ty')
 
 (** unification : takes two types and tries to them, i.e. determine if they can
     be equal. Type constants unify with identical type contents, and arrow types
     and other structured types are unified by unifying each of their components.
     After first performing an "occurs check" (see [compute_variable]), unbound
-    type variables can be unified with any type by replacing their reference with
-    a link pointing to the other type T.
+    type variables can be unified with any type by replacing their reference
+    with a link pointing to the other type T.
 
     If type T pointed is known, it should not reduce the variable type T since
     it can be shared by other variables and we could break links.
@@ -256,25 +259,26 @@ let rec expand ~gamma = function
     @raise Variable_no_instantiated if found `Bound` type variable. Indeed, it's
     normally impossible after a substitution by `Forall` normalized expression.
 *)
-let rec unification ?(gamma = Gamma.empty) t1 t2 =
+let rec unification ~gamma ~level t1 t2 =
   if t1 == t2 then ()
   else match t1, t2 with
     | Type.Const n1, Type.Const n2 when n1 = n2 -> ()
+    | Type.Primitive n1, Type.Primitive n2 when n1 = n2 -> ()
     | Type.App (c1, a1), Type.App (c2, a2) ->
-      unification ~gamma c1 c2;
+      unification ~gamma ~level c1 c2;
       begin
-        try List.iter2 (fun a1 a2 -> unification ~gamma a1 a2) a1 a2
+        try List.iter2 (fun a1 a2 -> unification ~gamma ~level a1 a2) a1 a2
         with Invalid_argument "List.iter2" -> raise (Conflict (t1, t2))
       end
     | Type.Arrow (a1, r1), Type.Arrow (a2, r2) ->
       begin
-        try List.iter2 (unification ~gamma) a1 a2
+        try List.iter2 (unification ~gamma ~level) a1 a2
         with Invalid_argument "List.iter2" -> raise (Conflict (t1, t2))
       end;
-      (unification ~gamma) r1 r2
+      (unification ~gamma ~level) r1 r2
     | Type.Var { contents = Type.Link t1 }, t2
     | t1, Type.Var { contents = Type.Link t2 } ->
-      (unification ~gamma) t1 t2
+      (unification ~gamma ~level) t1 t2
     | Type.Var { contents = Type.Generic id1 },
       Type.Var { contents = Type.Generic id2 }
     | Type.Var { contents = Type.Unbound (id1, _ ) },
@@ -309,10 +313,15 @@ let rec unification ?(gamma = Gamma.empty) t1 t2 =
       in
       let ty1 = substitution ids1 lst (expand ~gamma ty1 |> snd) in
       let ty2 = substitution ids2 lst (expand ~gamma ty2 |> snd) in
-      (unification ~gamma) ty1 ty2;
+      (unification ~gamma ~level) ty1 ty2;
       if union lst forall1 forall2
       then raise (Conflict (forall1, forall2))
 
+    | Type.Constr (ids, ty1), ty2
+    | ty2, Type.Constr (ids, ty1) ->
+      let lst = List.rev_map (fun _ -> Variable.make (level + 1)) ids in
+      let ty1 = substitution ids lst (expand ~gamma ty1 |> snd) in
+      (unification ~gamma ~level) ty1 ty2
 
     (** The unification of the variants is done by comparing the names of
         constructor and types respectively.
@@ -322,7 +331,7 @@ let rec unification ?(gamma = Gamma.empty) t1 t2 =
         try
           Type.Set.iter2
             (fun (ctor1, ty1) (ctor2, ty2) ->
-              if ctor1 = ctor2 then unification ~gamma ty1 ty2
+              if ctor1 = ctor2 then unification ~gamma ~level ty1 ty2
               else raise (Conflict (Type.Set l1, Type.Set l2)))
             l1 l2
         with Invalid_argument "Type.Set.iter2" -> raise (Conflict (t1, t2))
@@ -330,14 +339,14 @@ let rec unification ?(gamma = Gamma.empty) t1 t2 =
 
     | Type.Alias (n1, ty1), Type.Const n2 when n1 = n2 ->
       let (s, ty2) = expand ~gamma (Type.Const n2) in
-      if s then unification ~gamma ty1 ty2
+      if s then unification ~gamma ~level ty1 ty2
       else raise (Conflict (ty1, ty2))
     | Type.Const n1, Type.Alias (n2, ty2) when n1 = n2 ->
       let (s, ty1) = expand ~gamma (Type.Const n1) in
-      if s then unification ~gamma ty1 ty2
+      if s then unification ~gamma ~level ty1 ty2
       else raise (Conflict (ty1, ty2))
-    | Type.Alias (_, ty1), ty2 -> unification ~gamma ty1 ty2
-    | ty1, Type.Alias (_, ty2) -> unification ~gamma ty1 ty2
+    | Type.Alias (_, ty1), ty2 -> unification ~gamma ~level ty1 ty2
+    | ty1, Type.Alias (_, ty2) -> unification ~gamma ~level ty1 ty2
 
     | ty1, ty2 -> raise (Conflict (ty1, ty2))
 
@@ -440,9 +449,11 @@ let generalization level ty =
     | Type.Arrow (a, r) -> List.iter aux a; aux r
     | Type.Forall (_, ty) -> aux ty
     | Type.Const _ -> ()
+    | Type.Primitive _ -> ()
     | Type.Alias (_, ty) -> aux ty
     | Type.Set l ->
       Type.Set.iter (fun _ -> aux) l
+    | Type.Constr (_, ty) -> aux ty
   in aux ty; match !acc with
   | [] -> ty
   | ids -> Type.Forall (List.rev ids, ty)
@@ -491,10 +502,10 @@ let subsume ~gamma ~level ty1 ty2 =
   | Type.Forall (ids, ty1) as forall ->
     let lst = List.rev_map (fun _ -> Variable.generic ()) ids in
     let ty1' = substitution ids lst ty1 in
-    unification ~gamma ty1' ty2';
+    unification ~gamma ~level ty1' ty2';
     if union lst forall ty2
     then raise (No_instance (ty1, ty2))
-  | ty1 -> unification ~gamma ty1 ty2'
+  | ty1 -> unification ~gamma ~level ty1 ty2'
 
 let ( >!= ) func handle_error =
   try func () with
@@ -585,7 +596,7 @@ let rec eval
        let n' = Variable.make (level + 1) in
        let ext = Environment.extend env n n' in
        let e' = eval ~gamma ~env:ext ~level:(level + 2) e in
-       unification ~gamma n' e';
+       unification ~gamma ~level n' e';
        eval
          ~gamma
          ~env:(Environment.extend env n (generalization level e'))
@@ -610,51 +621,57 @@ let rec eval
        let i' = eval ~gamma ~env ~level i in
        let a' = eval ~gamma ~env ~level a in
        let b' = eval ~gamma ~env ~level b in
-       unification ~gamma i' (Type.Const "bool");
-       unification ~gamma a' b';
+       unification ~gamma ~level i' Type.Primitive.bool;
+       unification ~gamma ~level a' b';
        a')
     >!= raise_with_loc loc
   | Ast.Seq (loc, a, b) ->
     (fun () ->
        let a' = eval ~gamma ~env ~level a in
        let b' = eval ~gamma ~env ~level b in
-       unification ~gamma a' (Type.Const "unit");
+       unification ~gamma ~level a' Type.Primitive.unit;
        b')
     >!= raise_with_loc loc
-  | Ast.Int _ -> Type.Const "int"
-  | Ast.Bool _ -> Type.Const "bool"
-  | Ast.Char _ -> Type.Const "char"
-  | Ast.Unit _ -> Type.Const "unit"
+  | Ast.Int _ -> Type.Primitive.int
+  | Ast.Bool _ -> Type.Primitive.bool
+  | Ast.Char _ -> Type.Primitive.char
+  | Ast.Unit _ -> Type.Primitive.unit
   | Ast.Tuple (_, l) ->
     Type.App (Type.Const "*", List.map (eval ~gamma ~env ~level) l)
 
-  | Ast.Variant (loc, ctor, expr) ->
+  | Ast.Variant (loc, ctor, expr) when Gamma.Datatype.exists ctor gamma ->
     (fun () ->
        let (name, ty) =
-         try
-           let (name, ty) = Gamma.Datatype.lookup ctor gamma in
-           let ty = ty
-                    |> Type.copy
-                    |> function Type.Set l -> l
-                              | _ -> raise (Unbound_constructor ctor)
-           in (name, ty)
-         with Not_found -> raise (Unbound_constructor ctor)
+         Gamma.Datatype.find ctor gamma
+         |> function
+            | Some (name, ty) ->
+              let ty = ty
+                       |> Type.copy
+                       |> function Type.Set l -> l
+                                 | _ -> assert false
+              in (name, ty)
+            | _ -> assert false
        in
        let v' = eval ~gamma ~env ~level expr in
        let v' = specialization (level + 1) v' in
        let v' = Type.Set.add ctor v' ty in
-       unification ~gamma (Type.Set ty |> expand ~gamma |> snd) (Type.Set v');
+       unification ~gamma ~level
+         (Type.Set ty |> expand ~gamma |> snd)
+         (Type.Set v');
        Type.Alias (name, Type.Set ty))
     >!= raise_with_loc loc
+  | Ast.Variant (loc, ctor, _) ->
+    raise (Error (loc, Unbound_constructor ctor))
+
   | Ast.Match (loc, expr, patterns) ->
     (fun () ->
       let ty = eval ~gamma ~env ~level expr in
       let rt = Variable.make (level + 1) in
       let compute_branch (pattern, expr) =
         let (ty', env) = compute_pattern gamma env level pattern in
-        unification ~gamma ty ty';
+        unification ~gamma ~level ty ty';
         let rt' = eval ~gamma ~env ~level expr in
-        unification ~gamma rt rt'
+        unification ~gamma ~level rt rt'
       in
       List.iter compute_branch patterns;
       rt)
@@ -692,7 +709,7 @@ and compute_argument gamma env level tys a =
     (fun (ty, a) ->
        let ty' = eval ~gamma ~env ~level a in
        if Ast.is_annotated a
-       then unification ~gamma ty ty'
+       then unification ~gamma ~level ty ty'
        else subsume ~gamma ~level ty ty')
     slst
 
@@ -700,10 +717,10 @@ and compute_pattern gamma env level = function
   | Pattern.Var (_, name) ->
     let ty = Variable.make (level + 1) in
     (ty, Environment.extend env name ty)
-  | Pattern.Bool _ -> (Type.Const "bool", env)
-  | Pattern.Int _ -> (Type.Const "int", env)
-  | Pattern.Char _ -> (Type.Const "char", env)
-  | Pattern.Unit _ -> (Type.Const "unit", env)
+  | Pattern.Bool _ -> (Type.Primitive.bool, env)
+  | Pattern.Int _ -> (Type.Primitive.int, env)
+  | Pattern.Char _ -> (Type.Primitive.char, env)
+  | Pattern.Unit _ -> (Type.Primitive.unit, env)
   | Pattern.Tuple (_, l) ->
     let (tys, new_env) =
       List.fold_left

@@ -15,7 +15,7 @@ module Datatype = struct
     let exists ctor map =
       G.exists (fun _ -> function
           | Type.Set l -> Type.Set.mem ctor l
-          | _ -> raise (Invalid_argument "Gamma.Datatype.lookup"))
+          | _ -> false)
         map
     in
     exists ctor datatype
@@ -28,6 +28,16 @@ module Datatype = struct
         map
     in
     G.choose (filter ctor datatype)
+
+  let find ctor { datatype; _ } =
+    let filter ctor map =
+      G.filter (fun _ -> function
+          | Type.Set l -> Type.Set.mem ctor l
+          | _ -> false)
+        map
+    in
+    try Some (G.choose (filter ctor datatype))
+    with Not_found -> None
 end
 
 exception Constructor_already_exists of string
