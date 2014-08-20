@@ -16,7 +16,7 @@ type t =
   | Forall of (int list * t)
   | Alias of (string * t)
   | Set of t Set.t
-  | Constr of (int list * t)
+  | Abs of (string list * t)
 and var =
   | Unbound of int * int
   | Bound of int

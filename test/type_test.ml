@@ -198,8 +198,7 @@ let rec compare r1 r2 =
   match r1, r2 with
   | OK ty1, OK ty2 -> (normalize ty1) = (normalize ty2)
   | Fail (Error (_, exn1)), Fail exn2
-  | Fail exn1, Fail (Error (_, exn2))
-  | Fail (Error (_, exn1)), Fail (Error (_, exn2)) ->
+  | Fail exn1, Fail (Error (_, exn2)) ->
     compare (Fail exn1) (Fail exn2)
   | Fail (Recursive_type a), Fail (Recursive_type b) -> Type.compare a b
   | Fail (Conflict (a1, b1)), Fail (Conflict (a2, b2)) ->

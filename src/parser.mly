@@ -40,8 +40,8 @@ let replace ids ty =
       (** see App *)
     | Forall (ids, ty) ->
       Forall (ids, aux ty)
-    | Constr (ids, ty) ->
-      Constr (ids, aux ty)
+    | Abs (ids, ty) ->
+      Abs (ids, aux ty)
     | Alias _ -> assert false (** It's premature *)
     | Set l ->
       Set (Type.Set.map aux l)
@@ -215,10 +215,7 @@ ty:
     | [] -> ty
     | _ -> Type.Forall (ids, ty) }
   | LPAR LAMBDA l = slist(NAME) x = ty RPAR
-  { let (ids, ty) = replace l x in
-    match ids with
-    | [] -> ty
-    | _ -> Type.Constr (ids, ty) }
+  { Type.Abs (l, x) }
 
 ann:
   | x = ty

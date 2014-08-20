@@ -131,7 +131,7 @@ let compute_variable id level ty =
     | Type.Arrow (a, r) ->
       List.iter aux a; aux r
     | Type.Forall (_, ty) -> aux ty
-    | Type.Constr (_, ty) -> aux ty
+    | Type.Abs (_, ty) -> aux ty
     | Type.Const _ -> ()
     | Type.Primitive _ -> ()
     | Type.Alias (_, ty) -> aux ty
@@ -160,8 +160,8 @@ let substitution ids tys ty =
       Type.Arrow (List.map (aux map) a, aux map r)
     | Type.Forall (ids, ty) ->
       Type.Forall (ids, aux (Map.removes map ids) ty)
-    | Type.Constr (ids, ty) ->
-      Type.Constr (ids, aux (Map.removes map ids) ty)
+    | Type.Abs (ids, ty) ->
+      Type.Abs (ids, ty)
     | Type.Alias (name, ty) -> Type.Alias (name, aux map ty)
     | Type.Set l ->
       Type.Set (Type.Set.map (aux map) l)
@@ -182,7 +182,7 @@ let catch_generic_variable ty =
     | Type.Arrow (a, r) ->
       List.iter aux a; aux r
     | Type.Forall (_, ty) -> aux ty
-    | Type.Constr (_, ty) -> aux ty
+    | Type.Abs (_, ty) -> aux ty
     | Type.Alias (_, ty) -> aux ty
     | Type.Set l ->
       Type.Set.iter (fun _ -> aux) l
@@ -235,8 +235,8 @@ let rec expand ~gamma ty =
       Type.Alias (name, aux ty)
     | Type.Set l ->
       Type.Set (Type.Set.map aux l)
-    | Type.Constr (lst, ty) ->
-      Type.Constr (lst, aux ty)
+    | Type.Abs (lst, ty) ->
+      Type.Abs (lst, aux ty)
     | ty -> ty
   in let ty' = aux ty in (!is_expanded, ty')
 
@@ -316,12 +316,6 @@ let rec unification ~gamma ~level t1 t2 =
       (unification ~gamma ~level) ty1 ty2;
       if union lst forall1 forall2
       then raise (Conflict (forall1, forall2))
-
-    | Type.Constr (ids, ty1), ty2
-    | ty2, Type.Constr (ids, ty1) ->
-      let lst = List.rev_map (fun _ -> Variable.make (level + 1)) ids in
-      let ty1 = substitution ids lst (expand ~gamma ty1 |> snd) in
-      (unification ~gamma ~level) ty1 ty2
 
     (** The unification of the variants is done by comparing the names of
         constructor and types respectively.
@@ -453,7 +447,7 @@ let generalization level ty =
     | Type.Alias (_, ty) -> aux ty
     | Type.Set l ->
       Type.Set.iter (fun _ -> aux) l
-    | Type.Constr (_, ty) -> aux ty
+    | Type.Abs (_, ty) -> aux ty
   in aux ty; match !acc with
   | [] -> ty
   | ids -> Type.Forall (List.rev ids, ty)

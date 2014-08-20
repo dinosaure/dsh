@@ -23,7 +23,7 @@ type t =
   | Forall of (int list * t)
   | Alias of (string * t)
   | Set of t Set.t
-  | Constr of (int list * t)
+  | Abs of (string list * t)
 and var =
   | Unbound of int * int
   | Bound of int
@@ -124,7 +124,7 @@ let rec is_monomorphic = function
   | Alias (_, t) -> is_monomorphic t
   | Set l ->
     Set.for_all (fun _ -> is_monomorphic) l
-  | Constr _ -> false
+  | Abs _ -> false
 
 let memoize f =
   let cache = Hashtbl.create 16 in
@@ -161,10 +161,9 @@ let to_string ?(env = Map.empty) ty =
       Printf.bprintf buffer "(forall (%a) %a)"
         (Buffer.add_list ~sep:" " Buffer.add_string) lst
         (expr ~first:true env) ty
-    | Constr (ids, ty) ->
-      let lst, env = Map.extend env ids in
+    | Abs (ids, ty) ->
       Printf.bprintf buffer "(lambda (%a) %a)"
-        (Buffer.add_list ~sep:" " Buffer.add_string) lst
+        (Buffer.add_list ~sep:" " Buffer.add_string) ids
         (expr ~first:true env) ty
     | Var { contents = Unbound (id, _) } ->
       Printf.bprintf buffer "%s" (name_of_unbound id)
@@ -211,4 +210,24 @@ let rec copy = function
   | Forall (lst, ty) -> Forall (lst, copy ty)
   | Alias (s, t) -> Alias (s, copy t)
   | Set l -> Set (Set.map copy l)
-  | Constr (lst, ty) -> Constr (lst, copy ty)
+  | Abs (lst, ty) -> Abs (lst, copy ty)
+
+let free ty =
+  let module S = BatSet.Make(String) in
+  let of_list l = List.fold_right S.add l S.empty in
+  let rec aux = function
+    | Const name -> S.singleton name
+    | Primitive name -> S.empty
+    | App (f, a) ->
+      S.union (aux f) (List.fold_left S.union S.empty (List.map aux a))
+    | Arrow (a, r) ->
+      S.union (List.fold_left S.union S.empty (List.map aux a)) (aux r)
+    | Var { contents = Link a } -> aux a
+    | Var ref -> S.empty
+    | Forall (lst, ty) -> aux ty
+    | Alias (s, t) -> S.empty
+    (* XXX: Alias is not a declaration (like let ... in).
+            It's just a fix for pretty-print *)
+    | Set l -> Set.fold (fun _ x a -> S.union x a) (Set.map aux l) S.empty
+    | Abs (lst, ty) -> S.diff (aux ty) (of_list lst)
+  in S.fold (fun x acc -> x :: acc) (aux ty) []
