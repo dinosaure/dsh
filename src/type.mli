@@ -31,6 +31,7 @@ module Primitive : sig
   val char : t
   val bool : t
   val unit : t
+  val pair : t
 end
 
 module Map : sig
@@ -45,3 +46,4 @@ val is_monomorphic : t -> bool
 
 val to_string : ?env:string Map.t -> t -> string
 val copy : t -> t
+val normalize : t -> t

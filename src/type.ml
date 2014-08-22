@@ -47,6 +47,7 @@ module Primitive = struct
     Hashtbl.add empty "char" ();
     Hashtbl.add empty "bool" ();
     Hashtbl.add empty "unit" ();
+    Hashtbl.add empty "*" ();
     empty
 
   let add name =
@@ -62,6 +63,7 @@ module Primitive = struct
   let char = Primitive "char"
   let bool = Primitive "bool"
   let unit = Primitive "unit"
+  let pair = Primitive "*"
 end
 
 module Buffer = struct
@@ -106,9 +108,10 @@ module Map = struct
 end
 
 let rec unlink = function
-  | Var ({ contents = Link ty } as t) ->
+  | Var ({ contents = Link ty } as var) ->
     let ty = unlink ty in
-    t := Link ty; ty
+    var := Link ty; ty
+  | Alias (_, ty) -> unlink ty
   | ty -> ty
 
 let rec is_monomorphic = function
@@ -150,7 +153,7 @@ let to_string ?(env = Map.empty) ty =
       Buffer.add_string buffer name
     | Primitive name ->
       Buffer.add_string buffer name
-    | Alias (name, _) ->
+    | Alias (name, ty) ->
       Buffer.add_string buffer name
     | App (f, a) ->
       Printf.bprintf buffer "(%a %a)"
@@ -212,9 +215,11 @@ let rec copy = function
   | Set l -> Set (Set.map copy l)
   | Abs (lst, ty) -> Abs (lst, copy ty)
 
+module S = BatSet.Make(String)
+let of_list l = List.fold_right S.add l S.empty
+let to_list s = S.fold (fun x a -> x :: a) s []
+
 let free ty =
-  let module S = BatSet.Make(String) in
-  let of_list l = List.fold_right S.add l S.empty in
   let rec aux = function
     | Const name -> S.singleton name
     | Primitive name -> S.empty
@@ -230,4 +235,96 @@ let free ty =
             It's just a fix for pretty-print *)
     | Set l -> Set.fold (fun _ x a -> S.union x a) (Set.map aux l) S.empty
     | Abs (lst, ty) -> S.diff (aux ty) (of_list lst)
-  in S.fold (fun x acc -> x :: acc) (aux ty) []
+  in aux ty
+
+let fresh names set =
+  let rec aux name =
+    if S.mem name set
+    then aux (name ^ "'")
+    else name
+  in List.map aux names
+
+let rec substitute name ty ty' =
+  match ty' with
+  | Const name' when name = name' -> ty
+  | Abs (lst, ty') ->
+    let free_of_ty = free ty in
+    let free_of_ty' = free ty' in
+    (* Stop substitution, [name] is got bound *)
+    if List.mem name lst then Abs (lst, ty')
+    (* Stop, substitution, [name] ∉ [free_of_ty'] *)
+    else if not (S.mem name free_of_ty') then Abs (lst, ty')
+    (* Rename bound vars to avoid conflict *)
+    else if not (S.inter free_of_ty (of_list lst) |> S.is_empty)
+    then
+      let lst' = fresh lst (S.union free_of_ty free_of_ty') in
+      Abs (lst', substitute name ty ty')
+    (* Regular substitution *)
+    else Abs (lst, substitute name ty ty')
+  | App (f, a) ->
+    App (substitute name ty f, List.map (substitute name ty) a)
+  | Arrow (a, r) ->
+    Arrow (List.map (substitute name ty) a, substitute name ty r)
+  | Var ({ contents = Link ty' } as var) ->
+    var := Link (substitute name ty ty');
+    Var var
+  | Forall (lst, ty') -> Forall (lst, substitute name ty ty')
+  | Alias (s, ty') -> Alias (s, substitute name ty ty')
+  | Set l -> Set (Set.map (substitute name ty) l)
+  | ty -> ty
+
+let rec is_abstraction = function
+  | Abs _ -> true
+  | Alias (_, t) -> is_abstraction t
+  | Var { contents = Link t } -> is_abstraction t
+  | _ -> false
+
+let rec is_redex = function
+  | App (t, _) -> is_abstraction t
+  | Alias (_, t) -> is_redex t
+  | Var { contents = Link t } -> is_redex t
+  | _ -> false
+
+exception Mismatch_arguments of t
+
+let () = Printexc.register_printer
+  (function
+    | Mismatch_arguments ty ->
+      Some (Printf.sprintf "mismatch argument(s) in application of %s"
+            (to_string ty))
+    | _ -> None)
+
+let rec reduction = function
+  | App (ty, args) when is_abstraction ty ->
+    begin
+      (** TODO: lost Alias (bug of pretty-print) and is not exhaustive
+                pattern-matching *)
+      let Abs (ids, ty) = unlink ty in
+      try let lst = List.combine ids args in
+          List.fold_right (fun (x, u) -> substitute x u) lst ty
+      with Invalid_argument "List.combine" ->
+           raise (Mismatch_arguments (Abs (ids, ty)))
+    end
+  | ty -> ty
+
+let normalize t =
+  let rec step t =
+    if is_redex t then reduction t
+    else match t with
+      | Abs (lst, t) -> Abs (lst, step t)
+      | App (f, a) ->
+        let f' = step f in
+        if f' = f then App (f, List.map step a)
+        else App (f', a)
+      | Arrow (a, r) -> Arrow (List.map step a, step r)
+      | Var ({ contents = Link t } as var) ->
+        var := Link (step t);
+        Var var
+      | Forall (lst, t) -> Forall (lst, step t)
+      | Alias (s, t) -> Alias (s, step t)
+      | Set l -> Set (Set.map step l)
+      | t -> t
+  in
+  let t' = step t in
+  let t' = if t' = t then t else step t' in
+  t'
