@@ -5,15 +5,6 @@ module Environment : sig
   val lookup : Type.t t -> string -> Type.t
 end
 
-module Variable : sig
-  val next : unit -> int
-  val reset : unit -> unit
-
-  val make : int -> Type.t
-  val generic : unit -> Type.t
-  val bound : unit -> (int * Type.t)
-end
-
 exception Recursive_type of Type.t
 exception Conflict of (Type.t * Type.t)
 exception Circularity of (Type.t * Type.t)

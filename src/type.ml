@@ -1,3 +1,20 @@
+module Environment = struct
+  include Map.Make (struct type t = int let compare = compare end)
+
+  let generate i =
+    (String.make 1 (char_of_int (int_of_char 'a' + (i mod 26))))
+    ^ (if i >= 26 then (string_of_int (i / 26)) else "")
+
+  let extend env ids =
+    let lst, env = List.fold_left
+        (fun (lst, env) id ->
+           let name = generate (cardinal env) in
+           (name :: lst, add id name env))
+        ([], env) ids
+    in
+    (List.rev lst, env)
+end
+
 module Set = struct
   include Map.Make(String)
 
@@ -29,6 +46,21 @@ and var =
   | Bound of int
   | Link of t
   | Generic of int
+
+module Variable = struct
+  let id = ref 0
+
+  let next () =
+    let i = !id in
+    incr id; i
+
+  let reset () =
+    id := 0
+
+  let make level = Var (ref (Unbound (next (), level)))
+  let generic () = Var (ref (Generic (next ())))
+  let bound () = let id = next () in (id, Var (ref (Bound id)))
+end
 
 module Primitive = struct
   type t = (string, unit) Hashtbl.t
@@ -90,23 +122,6 @@ module String = struct
     in aux lst; Buffer.contents buffer
 end
 
-module Map = struct
-  include Map.Make (struct type t = int let compare = compare end)
-
-  let generate i =
-    (String.make 1 (char_of_int (int_of_char 'a' + (i mod 26))))
-    ^ (if i >= 26 then (string_of_int (i / 26)) else "")
-
-  let extend env ids =
-    let lst, env = List.fold_left
-        (fun (lst, env) id ->
-           let name = generate (cardinal env) in
-           (name :: lst, add id name env))
-        ([], env) ids
-    in
-    (List.rev lst, env)
-end
-
 let rec unlink = function
   | Var ({ contents = Link ty } as var) ->
     let ty = unlink ty in
@@ -138,7 +153,7 @@ let memoize f =
       Hashtbl.add cache x y; y
   in aux
 
-let to_string ?(env = Map.empty) ty =
+let to_string ?(env = Environment.empty) ty =
   let count_unbound = ref 0 in
   let name_of_unbound =
     memoize (fun self id ->
@@ -160,7 +175,7 @@ let to_string ?(env = Map.empty) ty =
         (atom ~first env) f
         (Buffer.add_list ~sep:" " (expr ~first env)) a
     | Forall (ids, ty) ->
-      let lst, env = Map.extend env ids in
+      let lst, env = Environment.extend env ids in
       Printf.bprintf buffer "(forall (%a) %a)"
         (Buffer.add_list ~sep:" " Buffer.add_string) lst
         (expr ~first:true env) ty
@@ -172,7 +187,7 @@ let to_string ?(env = Map.empty) ty =
       Printf.bprintf buffer "%s" (name_of_unbound id)
     | Var { contents = Bound id } ->
       begin
-        try Buffer.add_string buffer (Map.find id env)
+        try Buffer.add_string buffer (Environment.find id env)
         with Not_found -> Printf.bprintf buffer "#%d" id
       end
     | Var { contents = Generic id } ->

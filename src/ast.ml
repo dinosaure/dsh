@@ -29,7 +29,7 @@ module Buffer = struct
     in aux lst
 
   let add_annotation buffer (lst, ty) =
-    let lst, map = Type.Map.extend Type.Map.empty lst in
+    let lst, map = Type.Environment.extend Type.Environment.empty lst in
     match lst with
     | [] -> Buffer.add_string buffer (Type.to_string ~env:map ty)
     | lst ->

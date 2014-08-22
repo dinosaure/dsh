@@ -5,50 +5,6 @@ module Environment = struct
   let lookup env name = find name env
 end
 
-module Variable : sig
-  val next : unit -> int
-  val reset : unit -> unit
-
-  val make : int -> Type.t
-  val generic : unit -> Type.t
-  val bound : unit -> (int * Type.t)
-end = struct
-  let id = ref 0
-
-  let next () =
-    let i = !id in
-    incr id; i
-
-  let reset () =
-    id := 0
-
-  let make level = Type.Var (ref (Type.Unbound (next (), level)))
-  let generic () = Type.Var (ref (Type.Generic (next ())))
-  let bound () = let id = next () in (id, Type.Var (ref (Type.Bound id)))
-end
-
-module Map = struct
-  include Map.Make (struct type t = int let compare = compare end)
-
-  let removes map ids =
-    List.fold_left
-      (fun acc x -> remove x acc)
-      map ids
-
-  let of_lists keys values =
-    List.fold_left2
-      (fun acc key value -> add key value acc)
-      empty keys values
-end
-
-module UnitSet = struct
-  type 'a t = ('a, unit) Hashtbl.t
-
-  let create size : 'a t = Hashtbl.create size
-  let add set data = Hashtbl.replace set data ()
-  let mem set data = Hashtbl.mem set data
-end
-
 exception Recursive_type of Type.t
 exception Conflict of (Type.t * Type.t)
 exception Circularity of (Type.t * Type.t)
@@ -147,6 +103,21 @@ let compute_variable id level ty =
     @param ty type to apply modification
 *)
 let substitution ids tys ty =
+  let module Map =
+    struct
+      include Map.Make (struct type t = int let compare = compare end)
+
+      let removes map ids =
+        List.fold_left
+          (fun acc x -> remove x acc)
+          map ids
+
+      let of_lists keys values =
+        List.fold_left2
+          (fun acc key value -> add key value acc)
+          empty keys values
+    end
+  in
   let rec aux map = function
     | Type.Const _ as ty -> ty
     | Type.Primitive _ as ty -> ty
@@ -168,14 +139,21 @@ let substitution ids tys ty =
   in aux (Map.of_lists ids tys) ty
 
 let catch_generic_variable ty =
-  let set = UnitSet.create 16 in
+  let module Set =
+    struct
+      type 'a t = ('a, unit) Hashtbl.t
+
+      let create size : 'a t = Hashtbl.create size
+      let add set data = Hashtbl.replace set data ()
+    end
+  in let set = Set.create 16 in
   let rec aux = function
     | Type.Const _ -> ()
     | Type.Primitive _ -> ()
     | Type.Var { contents = Type.Link ty } -> aux ty
     | Type.Var { contents = Type.Bound _ } -> ()
     | Type.Var { contents = Type.Generic _ } as ty ->
-      UnitSet.add set ty
+      Set.add set ty
     | Type.Var { contents = Type.Unbound _ } -> ()
     | Type.App (f, a) ->
       aux f; List.iter aux a
@@ -204,7 +182,7 @@ let union lst ty1 ty2 =
   let set1 = catch_generic_variable ty1 in
   let set2 = catch_generic_variable ty2 in
   List.exists
-    (fun var -> UnitSet.mem set1 var || UnitSet.mem set2 var) lst
+    (fun var -> Hashtbl.mem set1 var || Hashtbl.mem set2 var) lst
 
 (** expand : expands type by replacing its alias with new bodies to which
     they are linked. The function returns the standard type and a [bool]
@@ -307,7 +285,7 @@ let rec unification t1 t2 =
     | (Type.Forall (ids1, ty1) as forall1),
       (Type.Forall (ids2, ty2) as forall2) ->
       let lst =
-        try List.rev_map2 (fun _ _ -> Variable.generic ()) ids1 ids2
+        try List.rev_map2 (fun _ _ -> Type.Variable.generic ()) ids1 ids2
         with Invalid_argument "List.rev_map2" -> raise (Conflict (ty1, ty2))
       in
       let ty1 = substitution ids1 lst ty1
@@ -347,7 +325,7 @@ let rec unification t1 t2 =
 let specialization level ty =
   let rec aux level = function
     | Type.Forall (ids, ty) ->
-      let lst = List.rev_map (fun _ -> Variable.make level) ids in
+      let lst = List.rev_map (fun _ -> Type.Variable.make level) ids in
       substitution ids lst ty
     | Type.Var { contents = Type.Link ty } -> aux level ty
     | Type.Alias (name, ty) -> Type.Alias (name, aux level ty)
@@ -359,7 +337,7 @@ let specialization_annotation level (lst, ty) =
   let aux = function
     | [], ty -> [], ty
     | ids, ty ->
-      let lst = List.rev_map (fun _ -> Variable.make level) ids in
+      let lst = List.rev_map (fun _ -> Type.Variable.make level) ids in
       lst, substitution ids lst ty
   in aux (lst, ty)
 
@@ -407,9 +385,9 @@ let rec compute_function n = function
     let lst =
       let rec aux acc = function
         | 0 -> acc
-        | n -> aux (Variable.make level :: acc) (n - 1)
+        | n -> aux (Type.Variable.make level :: acc) (n - 1)
       in aux [] n
-    in let r = Variable.make level in
+    in let r = Type.Variable.make level in
     var := Type.Link (Type.Arrow (lst, r));
     lst, r
   | _ as ty -> raise (Expected_function ty)
@@ -437,7 +415,7 @@ let subsume ~gamma ~level ty1 ty2 =
   let ty2' = specialization level ty2 in
   match Type.unlink ty1 with
   | Type.Forall (ids, ty1) as forall ->
-    let lst = List.rev_map (fun _ -> Variable.generic ()) ids in
+    let lst = List.rev_map (fun _ -> Type.Variable.generic ()) ids in
     let ty1' = substitution ids lst ty1 in
     unification ty1' ty2';
     if union lst forall ty2
@@ -482,7 +460,7 @@ let rec eval
        let a' = List.map (fun (name, ann) ->
            let ty = match ann with
              | None ->
-               let var = Variable.make (level + 1) in
+               let var = Type.Variable.make (level + 1) in
                lstvar := var :: !lstvar;
                var
              | Some (lst, ty) ->
@@ -532,7 +510,7 @@ let rec eval
     >!= raise_with_loc loc
   | Ast.Rec (loc, n, e, c) ->
     (fun () ->
-       let n' = Variable.make (level + 1) in
+       let n' = Type.Variable.make (level + 1) in
        let ext = Environment.extend env n n' in
        let e' = eval ~gamma ~env:ext ~level:(level + 2) e in
        unification n' e';
@@ -606,7 +584,7 @@ let rec eval
   | Ast.Match (loc, expr, patterns) ->
     (fun () ->
       let ty = eval ~gamma ~env ~level expr in
-      let rt = Variable.make (level + 1) in
+      let rt = Type.Variable.make (level + 1) in
       let compute_branch (pattern, expr) =
         let (ty', env) = compute_pattern gamma env level pattern in
         unification ty ty';
@@ -656,7 +634,7 @@ and compute_argument gamma env level tys a =
 
 and compute_pattern gamma env level = function
   | Pattern.Var (_, name) ->
-    let ty = Variable.make (level + 1) in
+    let ty = Type.Variable.make (level + 1) in
     (ty, Environment.extend env name ty)
   | Pattern.Bool _ -> (Type.Primitive.bool, env)
   | Pattern.Int _ -> (Type.Primitive.int, env)

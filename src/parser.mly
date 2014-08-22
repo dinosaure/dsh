@@ -19,7 +19,7 @@ let replace ids ty =
         try match Hashtbl.find map name with
           | Some var -> var
           | None ->
-            let (id, var) = Synthesis.Variable.bound () in
+            let (id, var) = Type.Variable.bound () in
             lst := id :: !lst;
             Hashtbl.replace map name (Some var);
             var

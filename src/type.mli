@@ -1,3 +1,10 @@
+module Environment : sig
+  include Map.S with type key = int
+
+  val generate : int -> string
+  val extend : string t -> int list -> (string list * string t)
+end
+
 module Set : sig
   include (module type of Map.Make(String))
 
@@ -23,6 +30,15 @@ and var =
   | Link of t
   | Generic of int
 
+module Variable : sig
+  val next : unit -> int
+  val reset : unit -> unit
+
+  val make : int -> t
+  val generic : unit -> t
+  val bound : unit -> (int * t)
+end
+
 module Primitive : sig
   val add : string -> unit
   val exists : string -> bool
@@ -34,16 +50,9 @@ module Primitive : sig
   val pair : t
 end
 
-module Map : sig
-  include Map.S with type key = int
-
-  val generate : int -> string
-  val extend : string t -> int list -> (string list * string t)
-end
-
 val unlink : t -> t
 val is_monomorphic : t -> bool
 
-val to_string : ?env:string Map.t -> t -> string
+val to_string : ?env:string Environment.t -> t -> string
 val copy : t -> t
 val normalize : t -> t

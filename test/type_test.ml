@@ -6,28 +6,32 @@ type t =
   | Unsafe (* lazy to describe exception *)
 
 module Variable = struct
-  include Synthesis.Variable
+  include Type.Variable
 
   let dummy = Type.Var (ref (Type.Unbound (-1, -1)))
 end
 
 module Type = struct
-  include Type
 
   let rec compare t1 t2 =
     match t1, t2 with
-    | Const n1, Const n2 -> n1 = n2
-    | App (f1, a1), App (f2, a2) ->
+    | Type.Const n1, Type.Const n2 -> n1 = n2
+    | Type.App (f1, a1), Type.App (f2, a2) ->
       compare f1 f2
       && List.fold_left2 (fun acc t1 t2 -> acc && compare t1 t2) true a1 a2
-    | Arrow (a1, r1), Arrow (a2, r2) ->
+    | Type.Arrow (a1, r1), Type.Arrow (a2, r2) ->
       List.fold_left2 (fun acc t1 t2 -> acc && compare t1 t2) true a1 a2
       && compare r1 r2
-    | Var { contents = Link t1}, Var { contents = Link t2 } -> compare t1 t2
-    | Var { contents = Generic id1}, Var { contents = Generic id2 } -> id1 = id2
+    | Type.Var { contents = Type.Link t1},
+      Type.Var { contents = Type.Link t2 } ->
+      compare t1 t2
+    | Type.Var { contents = Type.Generic id1},
+      Type.Var { contents = Type.Generic id2 } -> id1 = id2
     | _, ty when ty = Variable.dummy -> true
     | ty, _ when ty = Variable.dummy -> true
     | _, _ -> t1 = t2
+
+  include Type
 end
 
 let tests =
@@ -216,7 +220,7 @@ let rec compare r1 r2 =
 let make_test (expr, result) =
   String.escaped expr >:: fun _ ->
     let re =
-      try Synthesis.Variable.reset ();
+      try Type.Variable.reset ();
         let ty = Synthesis.eval ~env:Core.core
             (Parser.single_expr Lexer.token (Lexing.from_string expr)) in
         OK (Type.to_string ty)
