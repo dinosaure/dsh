@@ -250,7 +250,6 @@ let rec expand ~gamma ty =
     If type T pointed is known, it should not reduce the variable type T since
     it can be shared by other variables and we could break links.
 
-    @param gamma all definitions
     @param t1
     @param t2
 
@@ -259,26 +258,26 @@ let rec expand ~gamma ty =
     @raise Variable_no_instantiated if found `Bound` type variable. Indeed, it's
     normally impossible after a substitution by `Forall` normalized expression.
 *)
-let rec unification ~gamma ~level t1 t2 =
+let rec unification t1 t2 =
   if t1 == t2 then ()
   else match t1, t2 with
     | Type.Const n1, Type.Const n2 when n1 = n2 -> ()
     | Type.Primitive n1, Type.Primitive n2 when n1 = n2 -> ()
     | Type.App (c1, a1), Type.App (c2, a2) ->
-      unification ~gamma ~level c1 c2;
+      unification c1 c2;
       begin
-        try List.iter2 (fun a1 a2 -> unification ~gamma ~level a1 a2) a1 a2
+        try List.iter2 (fun a1 a2 -> unification a1 a2) a1 a2
         with Invalid_argument "List.iter2" -> raise (Conflict (t1, t2))
       end
     | Type.Arrow (a1, r1), Type.Arrow (a2, r2) ->
       begin
-        try List.iter2 (unification ~gamma ~level) a1 a2
+        try List.iter2 unification a1 a2
         with Invalid_argument "List.iter2" -> raise (Conflict (t1, t2))
       end;
-      (unification ~gamma ~level) r1 r2
+      unification r1 r2
     | Type.Var { contents = Type.Link t1 }, t2
     | t1, Type.Var { contents = Type.Link t2 } ->
-      (unification ~gamma ~level) t1 t2
+      unification t1 t2
     | Type.Var { contents = Type.Generic id1 },
       Type.Var { contents = Type.Generic id2 }
     | Type.Var { contents = Type.Unbound (id1, _ ) },
@@ -311,9 +310,11 @@ let rec unification ~gamma ~level t1 t2 =
         try List.rev_map2 (fun _ _ -> Variable.generic ()) ids1 ids2
         with Invalid_argument "List.rev_map2" -> raise (Conflict (ty1, ty2))
       in
-      let ty1 = substitution ids1 lst (expand ~gamma ty1 |> snd) in
-      let ty2 = substitution ids2 lst (expand ~gamma ty2 |> snd) in
-      (unification ~gamma ~level) ty1 ty2;
+      let ty1 = substitution ids1 lst ty1
+        |> Type.normalize in
+      let ty2 = substitution ids2 lst ty2
+        |> Type.normalize in
+      unification ty1 ty2;
       if union lst forall1 forall2
       then raise (Conflict (forall1, forall2))
 
@@ -325,74 +326,16 @@ let rec unification ~gamma ~level t1 t2 =
         try
           Type.Set.iter2
             (fun (ctor1, ty1) (ctor2, ty2) ->
-              if ctor1 = ctor2 then unification ~gamma ~level ty1 ty2
+              if ctor1 = ctor2 then unification ty1 ty2
               else raise (Conflict (Type.Set l1, Type.Set l2)))
             l1 l2
         with Invalid_argument "Type.Set.iter2" -> raise (Conflict (t1, t2))
       end
 
-    | Type.Alias (n1, ty1), Type.Const n2 when n1 = n2 ->
-      let (s, ty2) = expand ~gamma (Type.Const n2) in
-      if s then unification ~gamma ~level ty1 ty2
-      else raise (Conflict (ty1, ty2))
-    | Type.Const n1, Type.Alias (n2, ty2) when n1 = n2 ->
-      let (s, ty1) = expand ~gamma (Type.Const n1) in
-      if s then unification ~gamma ~level ty1 ty2
-      else raise (Conflict (ty1, ty2))
-    | Type.Alias (_, ty1), ty2 -> unification ~gamma ~level ty1 ty2
-    | ty1, Type.Alias (_, ty2) -> unification ~gamma ~level ty1 ty2
+    | Type.Alias (_, ty1), ty2 -> unification ty1 ty2
+    | ty1, Type.Alias (_, ty2) -> unification ty1 ty2
 
     | ty1, ty2 -> raise (Conflict (ty1, ty2))
-
-    (** Sometimes we try to unify a standardized type with an Alias. In this
-        case, we try to expand the two types and if this treatment notify
-        us expand an alias, it restarts the unification with standardized
-        types.
-    *)
-
-    (*
-    | ty1, ty2 ->
-      let (s1, ty1) = expand ~gamma ty1 in
-      let (s2, ty2) = expand ~gamma ty2 in
-      if s1 || s2
-      then unification ~gamma ty1 ty2
-      else raise (Conflict (t1, t2))
-    *)
-
-(*
-let rec generalization level = function
-  | Type.Var { contents = Type.Unbound (id, level') } when level' > level ->
-    Type.Var (ref (Type.Generic id))
-  | Type.App (f, a) ->
-    Type.App (generalization level f, List.map (generalization level) a)
-  | Type.Arrow (a, r) ->
-    Type.Arrow (List.map (generalization level) a, generalization level r)
-  | Type.Var { contents = Type.Link ty } -> generalization level ty
-  | Type.Var { contents = Type.Generic _ }
-  | Type.Var { contents = Type.Unbound _ }
-  | Type.Const _ as ty -> ty
-*)
-
-(*
-let specialization level ty =
-  let map = Hashtbl.create 10 in
-  let rec aux = function
-    | Type.Const _ as ty -> ty
-    | Type.Var { contents = Type.Link ty } -> aux ty
-    | Type.Var { contents = Type.Generic id } ->
-      begin
-        try Hashtbl.find map id
-        with Not_found ->
-          let var = Variable.make level in
-          Hashtbl.add map id var; var
-      end
-    | Type.Var { contents = Type.Unbound _ } as ty -> ty
-    | Type.App (f, a) ->
-      Type.App (aux f, List.map aux a)
-    | Type.Arrow (a, r) ->
-      Type.Arrow (List.map aux a, aux r)
-  in aux ty
-*)
 
 (** specialization : instantiates a `Forall` type by substituting bound type
     variables by fresh `Unbound` type variables, wich can then by unified with
@@ -496,10 +439,10 @@ let subsume ~gamma ~level ty1 ty2 =
   | Type.Forall (ids, ty1) as forall ->
     let lst = List.rev_map (fun _ -> Variable.generic ()) ids in
     let ty1' = substitution ids lst ty1 in
-    unification ~gamma ~level ty1' ty2';
+    unification ty1' ty2';
     if union lst forall ty2
     then raise (No_instance (ty1, ty2))
-  | ty1 -> unification ~gamma ~level ty1 ty2'
+  | ty1 -> unification ty1 ty2'
 
 let ( >!= ) func handle_error =
   try func () with
@@ -515,7 +458,7 @@ let rec eval
     ?(level = 0) = function
   | Ast.Var (loc, name) ->
     (fun () ->
-       try Environment.lookup env name
+       try Environment.lookup env name |> expand ~gamma |> snd |> Type.normalize
        with Not_found -> raise (Unbound_variable name))
     >!= raise_with_loc loc
   | Ast.Abs (loc, a, c) ->
@@ -544,11 +487,12 @@ let rec eval
                var
              | Some (lst, ty) ->
                let _, ty_expanded = expand ~gamma ty in
-               let vars, ty_expanded = specialization_annotation
+               let ty_normalized = Type.normalize ty_expanded in
+               let vars, ty_normalized = specialization_annotation
                    (level + 1)
-                   (lst, ty_expanded) in
+                   (lst, ty_normalized) in
                lstvar := vars @ !lstvar;
-               ty_expanded
+               ty_normalized
            in refenv := Environment.extend !refenv name ty;
            ty) a
        in
@@ -570,10 +514,11 @@ let rec eval
         [compute_argument].
     *)
     (fun () ->
-       let f' = eval ~gamma ~env ~level:(level + 1) f in
-       let f' = expand ~gamma f' |> snd in
-       let f' = specialization (level + 1) f' in
-       let a', r' = compute_function (List.length a) f' in
+       let ft = eval ~gamma ~env ~level:(level + 1) f in
+       let ft_expanded = expand ~gamma ft |> snd in
+       let ft_normalized = Type.normalize ft_expanded in
+       let ft_normalized = specialization (level + 1) ft_normalized in
+       let a', r' = compute_function (List.length a) ft_normalized in
        compute_argument gamma env (level + 1) a' a;
        generalization level (specialization (level + 1) r'))
     >!= raise_with_loc loc
@@ -590,7 +535,7 @@ let rec eval
        let n' = Variable.make (level + 1) in
        let ext = Environment.extend env n n' in
        let e' = eval ~gamma ~env:ext ~level:(level + 2) e in
-       unification ~gamma ~level n' e';
+       unification n' e';
        eval
          ~gamma
          ~env:(Environment.extend env n (generalization level e'))
@@ -604,26 +549,27 @@ let rec eval
     *)
     (fun () ->
        let _, ty_expanded = expand ~gamma ty in
-       let _, ty_expanded =
-         specialization_annotation level (lst, ty_expanded) in
+       let ty_normalized = Type.normalize ty_expanded in
+       let _, ty_normalized =
+         specialization_annotation level (lst, ty_normalized) in
        let e' = eval ~gamma ~env ~level e in
-       subsume ~gamma ~level ty_expanded e';
-       ty_expanded)
+       subsume ~gamma ~level ty_normalized e';
+       ty_normalized)
     >!= raise_with_loc loc
   | Ast.If (loc, i, a, b) ->
     (fun () ->
        let i' = eval ~gamma ~env ~level i in
        let a' = eval ~gamma ~env ~level a in
        let b' = eval ~gamma ~env ~level b in
-       unification ~gamma ~level i' Type.Primitive.bool;
-       unification ~gamma ~level a' b';
+       unification i' Type.Primitive.bool;
+       unification a' b';
        a')
     >!= raise_with_loc loc
   | Ast.Seq (loc, a, b) ->
     (fun () ->
        let a' = eval ~gamma ~env ~level a in
        let b' = eval ~gamma ~env ~level b in
-       unification ~gamma ~level a' Type.Primitive.unit;
+       unification a' Type.Primitive.unit;
        b')
     >!= raise_with_loc loc
   | Ast.Int _ -> Type.Primitive.int
@@ -631,7 +577,7 @@ let rec eval
   | Ast.Char _ -> Type.Primitive.char
   | Ast.Unit _ -> Type.Primitive.unit
   | Ast.Tuple (_, l) ->
-    Type.App (Type.Const "*", List.map (eval ~gamma ~env ~level) l)
+    Type.App (Type.Primitive.pair, List.map (eval ~gamma ~env ~level) l)
 
   | Ast.Variant (loc, ctor, expr) when Gamma.Datatype.exists ctor gamma ->
     (fun () ->
@@ -649,8 +595,8 @@ let rec eval
        let v' = eval ~gamma ~env ~level expr in
        let v' = specialization (level + 1) v' in
        let v' = Type.Set.add ctor v' ty in
-       unification ~gamma ~level
-         (Type.Set ty |> expand ~gamma |> snd)
+       unification
+         (Type.Set ty |> expand ~gamma |> snd |> Type.normalize)
          (Type.Set v');
        Type.Alias (name, Type.Set ty))
     >!= raise_with_loc loc
@@ -663,9 +609,9 @@ let rec eval
       let rt = Variable.make (level + 1) in
       let compute_branch (pattern, expr) =
         let (ty', env) = compute_pattern gamma env level pattern in
-        unification ~gamma ~level ty ty';
+        unification ty ty';
         let rt' = eval ~gamma ~env ~level expr in
-        unification ~gamma ~level rt rt'
+        unification rt rt'
       in
       List.iter compute_branch patterns;
       rt)
@@ -689,6 +635,7 @@ let rec eval
     @param a list of arguments
 *)
 and compute_argument gamma env level tys a =
+  let tys = List.map (fun x -> expand ~gamma x |> snd |> Type.normalize) tys in
   let plst = List.combine tys a in
   let get_ordering ty arg =
     match Type.unlink ty with
@@ -703,7 +650,7 @@ and compute_argument gamma env level tys a =
     (fun (ty, a) ->
        let ty' = eval ~gamma ~env ~level a in
        if Ast.is_annotated a
-       then unification ~gamma ~level ty ty'
+       then unification ty ty'
        else subsume ~gamma ~level ty ty')
     slst
 
@@ -722,7 +669,7 @@ and compute_pattern gamma env level = function
           let (ty, new_env) = compute_pattern gamma env level x in
           (ty :: tys, new_env))
         ([], env) l
-    in (Type.App (Type.Const "*", List.rev tys), new_env)
+    in (Type.App (Type.Primitive.pair, List.rev tys), new_env)
   | Pattern.Variant (_, ctor, expr) ->
     let (name, ty) =
       try
