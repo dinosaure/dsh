@@ -33,7 +33,6 @@ end
 
 type t =
   | Const of string
-  | Primitive of string
   | App of (t * t list)
   | Arrow of (t list * t)
   | Var of var ref
@@ -62,41 +61,11 @@ module Variable = struct
   let bound () = let id = next () in (id, Var (ref (Bound id)))
 end
 
-module Primitive = struct
-  type t = (string, unit) Hashtbl.t
-
-  exception Primitive_already_exists of string
-
-  let () = Printexc.register_printer
-    (function
-      | Primitive_already_exists name ->
-        Some (Printf.sprintf "primitive %s already exists" name)
-      | _ -> None)
-
-  let set =
-    let empty = Hashtbl.create 16 in
-    Hashtbl.add empty "int" ();
-    Hashtbl.add empty "char" ();
-    Hashtbl.add empty "bool" ();
-    Hashtbl.add empty "unit" ();
-    Hashtbl.add empty "*" ();
-    empty
-
-  let add name =
-    try let _ = Hashtbl.find set name in
-        raise (Primitive_already_exists name)
-    with Not_found -> Hashtbl.add set name ()
-
-  let exists name =
-    try let _ = Hashtbl.find set name in true
-    with Not_found -> false
-
-  let int = Primitive "int"
-  let char = Primitive "char"
-  let bool = Primitive "bool"
-  let unit = Primitive "unit"
-  let pair = Primitive "*"
-end
+let int = Const "int"
+let char = Const "char"
+let bool = Const "bool"
+let unit = Const "unit"
+let tuple = Const "*"
 
 module Buffer = struct
   include Buffer
@@ -132,7 +101,6 @@ let rec unlink = function
 let rec is_monomorphic = function
   | Forall _ -> false
   | Const _ -> true
-  | Primitive _ -> true
   | Var { contents = Link ty } -> is_monomorphic ty
   | Var _ -> true
   | App (f, a) ->
@@ -165,8 +133,6 @@ let to_string ?(env = Environment.empty) ty =
   in
   let rec atom ?(first = false) env buffer = function
     | Const name ->
-      Buffer.add_string buffer name
-    | Primitive name ->
       Buffer.add_string buffer name
     | Alias (name, ty) ->
       Buffer.add_string buffer name
@@ -220,7 +186,6 @@ let to_string ?(env = Environment.empty) ty =
 
 let rec copy = function
   | Const name -> Const name
-  | Primitive name -> Primitive name
   | App (f, a) -> App (copy f, List.map copy a)
   | Arrow (a, r) -> Arrow (List.map copy a, copy r)
   | Var { contents = Link a } -> Var { contents = Link (copy a) }
@@ -237,7 +202,6 @@ let to_list s = S.fold (fun x a -> x :: a) s []
 let free ty =
   let rec aux = function
     | Const name -> S.singleton name
-    | Primitive name -> S.empty
     | App (f, a) ->
       S.union (aux f) (List.fold_left S.union S.empty (List.map aux a))
     | Arrow (a, r) ->

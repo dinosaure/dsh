@@ -54,7 +54,7 @@ let tests =
      Fail (Synthesis.Conflict
              (Type.Arrow ([ Variable.dummy ], Variable.dummy),
               (Type.Arrow ([ Variable.dummy; Variable.dummy ],
-                           Type.Primitive.bool)))));
+                           Type.bool)))));
     ("(let (f (lambda (a b) true)) (= f =))",
      OK ("bool"));
     ("(let (f (lambda (x) x)) (= f succ))",
@@ -62,7 +62,7 @@ let tests =
     ("(let (f (lambda (x) x)) ((f 1), (f true)))",
      OK ("(* int bool)"));
     ("(lambda (f) ((f 1), (f true)))",
-     Fail (Synthesis.Conflict (Type.Primitive.int, Type.Primitive.bool)));
+     Fail (Synthesis.Conflict (Type.int, Type.bool)));
     ("(let (f (lambda (x y) (let (a (= x y)) [x = y]))) f)",
      OK ("(forall (a) (a -> a -> bool))"));
     ("(id id)", OK ("(forall (a) (a -> a))"));
@@ -74,11 +74,11 @@ let tests =
     ("(let (l1 (cons id nill)) (let (l2 (cons succ nill)) l2))",
      OK ("(list (int -> int))"));
     ("[1 + true]",
-     Fail (Synthesis.Conflict (Type.Primitive.int, Type.Primitive.bool)));
+     Fail (Synthesis.Conflict (Type.int, Type.bool)));
     ("(+ 1)",
      Fail (Synthesis.Mismatch_arguments
-             (Type.Arrow ([Type.Primitive.int; Type.Primitive.int],
-                          Type.Primitive.int))));
+             (Type.Arrow ([Type.int; Type.int],
+                          Type.int))));
     ("(lambda (x) (let (y x) x))", OK ("(forall (a) (a -> a))"));
     ("(lambda (x) (let (y (let (z (x (lambda (x) x))) z)) y))",
      OK ("(forall (a b) (((a -> a) -> b) -> b))"));
@@ -99,7 +99,7 @@ let tests =
      Fail (Synthesis.Recursive_type
              (Type.Arrow ([ Variable.dummy ], Variable.dummy))));
     ("(1 id)",
-     Fail (Synthesis.Expected_function (Type.Primitive.int)));
+     Fail (Synthesis.Expected_function (Type.int)));
     ("(lambda (f) (let (x (lambda (g y) (let (_ (g y)) (= f g)))) x))",
      OK ("(forall (a b) ((a -> b) -> (a -> b) -> a -> bool))"));
     ("(let (const (lambda (x) (lambda (y) x))) const)",
@@ -110,7 +110,7 @@ let tests =
      OK ("(forall (a b) ((a -> b) -> a -> b))"));
     ("ids", OK "(list (forall (a) (a -> a)))");
     ("(lambda (f) ((f 1), (f true)))",
-     Fail (Synthesis.Conflict (Type.Primitive.int, Type.Primitive.bool)));
+     Fail (Synthesis.Conflict (Type.int, Type.bool)));
     ("(lambda (f : (forall (a) (a -> a))) ((f true), (f 1)))",
      OK ("(((forall (a) (a -> a))) -> (* bool int))"));
     ("(cons ids nill)", OK ("(list (list (forall (a) (a -> a))))"));
@@ -124,7 +124,7 @@ let tests =
     ("(poly id)", OK ("(* int bool)"));
     ("(poly (lambda (x) x))", OK ("(* int bool)"));
     ("(poly succ)",
-     Fail (Synthesis.Conflict (Variable.dummy, Type.Primitive.int)));
+     Fail (Synthesis.Conflict (Variable.dummy, Type.int)));
     ("(apply succ 1)", OK ("int"));
     ("(apply poly id)", OK ("(* int bool)"));
     ("(id : (forall (a) (a -> a))) : (int -> int)", OK ("(int -> int)"));

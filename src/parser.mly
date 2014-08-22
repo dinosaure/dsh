@@ -25,7 +25,6 @@ let replace ids ty =
             var
         with Not_found -> ty
       end
-    | Primitive _ as ty -> ty
     | Var _ as ty -> ty
     | App (f, a) ->
       let f' = aux f in
@@ -194,13 +193,13 @@ param:
 
 ty_variant:
   | c = CTOR
-  { (c, Type.Primitive.unit) }
+  { (c, Type.unit) }
   | LPAR c = CTOR ty = ty RPAR
   { (c, ty) }
 
 ty:
   | n = NAME
-  { if Type.Primitive.exists n then Type.Primitive n else Type.Const n }
+  { Type.Const n }
   | LPAR f = ty a = ty+ RPAR
   { Type.App (f, a) }
   | LPAR c = alist(ARROW, ty) RPAR

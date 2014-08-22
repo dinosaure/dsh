@@ -16,7 +16,6 @@ end
 
 type t =
   | Const of string
-  | Primitive of string
   | App of (t * t list)
   | Arrow of (t list * t)
   | Var of var ref
@@ -39,16 +38,11 @@ module Variable : sig
   val bound : unit -> (int * t)
 end
 
-module Primitive : sig
-  val add : string -> unit
-  val exists : string -> bool
-
-  val int : t
-  val char : t
-  val bool : t
-  val unit : t
-  val pair : t
-end
+val int : t
+val char : t
+val bool : t
+val unit : t
+val tuple : t
 
 val unlink : t -> t
 val is_monomorphic : t -> bool

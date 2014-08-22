@@ -89,7 +89,6 @@ let compute_variable id level ty =
     | Type.Forall (_, ty) -> aux ty
     | Type.Abs (_, ty) -> aux ty
     | Type.Const _ -> ()
-    | Type.Primitive _ -> ()
     | Type.Alias (_, ty) -> aux ty
     | Type.Set l -> Type.Set.iter (fun _ -> aux) l
   in aux ty
@@ -120,7 +119,6 @@ let substitution ids tys ty =
   in
   let rec aux map = function
     | Type.Const _ as ty -> ty
-    | Type.Primitive _ as ty -> ty
     | Type.Var { contents = Type.Link ty } -> aux map ty
     | Type.Var { contents = Type.Bound id } as ty ->
       begin try Map.find id map with Not_found -> ty end
@@ -149,7 +147,6 @@ let catch_generic_variable ty =
   in let set = Set.create 16 in
   let rec aux = function
     | Type.Const _ -> ()
-    | Type.Primitive _ -> ()
     | Type.Var { contents = Type.Link ty } -> aux ty
     | Type.Var { contents = Type.Bound _ } -> ()
     | Type.Var { contents = Type.Generic _ } as ty ->
@@ -240,7 +237,6 @@ let rec unification t1 t2 =
   if t1 == t2 then ()
   else match t1, t2 with
     | Type.Const n1, Type.Const n2 when n1 = n2 -> ()
-    | Type.Primitive n1, Type.Primitive n2 when n1 = n2 -> ()
     | Type.App (c1, a1), Type.App (c2, a2) ->
       unification c1 c2;
       begin
@@ -364,7 +360,6 @@ let generalization level ty =
     | Type.Arrow (a, r) -> List.iter aux a; aux r
     | Type.Forall (_, ty) -> aux ty
     | Type.Const _ -> ()
-    | Type.Primitive _ -> ()
     | Type.Alias (_, ty) -> aux ty
     | Type.Set l ->
       Type.Set.iter (fun _ -> aux) l
@@ -539,7 +534,7 @@ let rec eval
        let i' = eval ~gamma ~env ~level i in
        let a' = eval ~gamma ~env ~level a in
        let b' = eval ~gamma ~env ~level b in
-       unification i' Type.Primitive.bool;
+       unification i' Type.bool;
        unification a' b';
        a')
     >!= raise_with_loc loc
@@ -547,15 +542,15 @@ let rec eval
     (fun () ->
        let a' = eval ~gamma ~env ~level a in
        let b' = eval ~gamma ~env ~level b in
-       unification a' Type.Primitive.unit;
+       unification a' Type.unit;
        b')
     >!= raise_with_loc loc
-  | Ast.Int _ -> Type.Primitive.int
-  | Ast.Bool _ -> Type.Primitive.bool
-  | Ast.Char _ -> Type.Primitive.char
-  | Ast.Unit _ -> Type.Primitive.unit
+  | Ast.Int _ -> Type.int
+  | Ast.Bool _ -> Type.bool
+  | Ast.Char _ -> Type.char
+  | Ast.Unit _ -> Type.unit
   | Ast.Tuple (_, l) ->
-    Type.App (Type.Primitive.pair, List.map (eval ~gamma ~env ~level) l)
+    Type.App (Type.tuple, List.map (eval ~gamma ~env ~level) l)
 
   | Ast.Variant (loc, ctor, expr) when Gamma.Datatype.exists ctor gamma ->
     (fun () ->
@@ -636,10 +631,10 @@ and compute_pattern gamma env level = function
   | Pattern.Var (_, name) ->
     let ty = Type.Variable.make (level + 1) in
     (ty, Environment.extend env name ty)
-  | Pattern.Bool _ -> (Type.Primitive.bool, env)
-  | Pattern.Int _ -> (Type.Primitive.int, env)
-  | Pattern.Char _ -> (Type.Primitive.char, env)
-  | Pattern.Unit _ -> (Type.Primitive.unit, env)
+  | Pattern.Bool _ -> (Type.bool, env)
+  | Pattern.Int _ -> (Type.int, env)
+  | Pattern.Char _ -> (Type.char, env)
+  | Pattern.Unit _ -> (Type.unit, env)
   | Pattern.Tuple (_, l) ->
     let (tys, new_env) =
       List.fold_left
@@ -647,7 +642,7 @@ and compute_pattern gamma env level = function
           let (ty, new_env) = compute_pattern gamma env level x in
           (ty :: tys, new_env))
         ([], env) l
-    in (Type.App (Type.Primitive.pair, List.rev tys), new_env)
+    in (Type.App (Type.tuple, List.rev tys), new_env)
   | Pattern.Variant (_, ctor, expr) ->
     let (name, ty) =
       try
