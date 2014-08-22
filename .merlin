@@ -6,4 +6,4 @@ B _build/src
 B _build/bin
 B _build/test
 
-PKG batteries oUnit ANSITerminal
+PKG batteries oUnit ANSITerminal ocamlbuild
