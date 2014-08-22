@@ -44,7 +44,10 @@ let tests =
                        (bar (forall (a) (a -> foo)))
                        (lambda (f : bar) (f true))))"),
      OK ("(bar -> foo)");
-
+    ("(type (a int)
+       (type (foo (lambda (a) (* a int)))
+        ((lambda (x : (foo a)) (fst x)) (5, 7))))",
+     OK ("a"));
   ]
 
 let to_string = function
