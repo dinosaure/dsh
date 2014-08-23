@@ -213,7 +213,7 @@ let rec expand ~gamma ty =
     | Type.Abs (lst, ty) ->
       Type.Abs (lst, aux ty)
     | ty -> ty
-  in let ty' = aux ty in (!is_expanded, ty')
+  in aux ty
 
 (** unification : takes two types and tries to them, i.e. determine if they can
     be equal. Type constants unify with identical type contents, and arrow types
@@ -431,7 +431,7 @@ let rec eval
     ?(level = 0) = function
   | Ast.Var (loc, name) ->
     (fun () ->
-       try Environment.lookup env name |> expand ~gamma |> snd |> Type.normalize
+       try Environment.lookup env name |> expand ~gamma |> Type.normalize
        with Not_found -> raise (Unbound_variable name))
     >!= raise_with_loc loc
   | Ast.Abs (loc, a, c) ->
@@ -459,7 +459,7 @@ let rec eval
                lstvar := var :: !lstvar;
                var
              | Some (lst, ty) ->
-               let _, ty_expanded = expand ~gamma ty in
+               let ty_expanded = expand ~gamma ty in
                let ty_normalized = Type.normalize ty_expanded in
                let vars, ty_normalized = specialization_annotation
                    (level + 1)
@@ -488,7 +488,7 @@ let rec eval
     *)
     (fun () ->
        let ft = eval ~gamma ~env ~level:(level + 1) f in
-       let ft_expanded = expand ~gamma ft |> snd in
+       let ft_expanded = expand ~gamma ft in
        let ft_normalized = Type.normalize ft_expanded in
        let ft_normalized = specialization (level + 1) ft_normalized in
        let a', r' = compute_function (List.length a) ft_normalized in
@@ -521,7 +521,7 @@ let rec eval
         this implementation of [eval].
     *)
     (fun () ->
-       let _, ty_expanded = expand ~gamma ty in
+       let ty_expanded = expand ~gamma ty in
        let ty_normalized = Type.normalize ty_expanded in
        let _, ty_normalized =
          specialization_annotation level (lst, ty_normalized) in
@@ -569,7 +569,7 @@ let rec eval
        let v' = specialization (level + 1) v' in
        let v' = Type.Set.add ctor v' ty in
        unification
-         (Type.Set ty |> expand ~gamma |> snd |> Type.normalize)
+         (Type.Set ty |> expand ~gamma |> Type.normalize)
          (Type.Set v');
        Type.Alias (name, Type.Set ty))
     >!= raise_with_loc loc
@@ -608,7 +608,6 @@ let rec eval
     @param a list of arguments
 *)
 and compute_argument gamma env level tys a =
-  let tys = List.map (fun x -> expand ~gamma x |> snd |> Type.normalize) tys in
   let plst = List.combine tys a in
   let get_ordering ty arg =
     match Type.unlink ty with

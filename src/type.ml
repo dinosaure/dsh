@@ -276,13 +276,16 @@ let () = Printexc.register_printer
 let rec reduction = function
   | App (ty, args) when is_abstraction ty ->
     begin
-      (** TODO: lost Alias (bug of pretty-print) and is not exhaustive
-                pattern-matching *)
-      let Abs (ids, ty) = unlink ty in
-      try let lst = List.combine ids args in
-          List.fold_right (fun (x, u) -> substitute x u) lst ty
-      with Invalid_argument "List.combine" ->
-           raise (Mismatch_arguments (Abs (ids, ty)))
+      unlink ty |> function Abs (ids, ty) ->
+        (** TODO: lost Alias (bug of pretty-print) and is not exhaustive
+                  pattern-matching *)
+        begin
+          try let lst = List.combine ids args in
+            List.fold_right (fun (x, u) -> substitute x u) lst ty
+          with Invalid_argument "List.combine" ->
+             raise (Mismatch_arguments (Abs (ids, ty)))
+        end
+      | _ -> assert false (* or is_abstraction is false *)
     end
   | ty -> ty
 
