@@ -62,8 +62,6 @@ rule token = parse
   | "V"                                   { Parser.FORALL }
   | "E"                                   { Parser.SOME }
 
-  | "->"                                  { Parser.ARROW }
-
   | "true"                                { Parser.BOOL true }
   | "false"                               { Parser.BOOL false }
 
@@ -80,7 +78,6 @@ rule token = parse
 
 {
 
-(*
 let string_of_token = function
   | Parser.LPAR -> "("
   | Parser.RPAR -> ")"
@@ -90,23 +87,28 @@ let string_of_token = function
   | Parser.SEMICOLON -> ";"
   | Parser.PIPE -> "|"
   | Parser.COMMA -> ","
-  | Parser.MATCH -> "match"
-  | Parser.LET -> "let"
-  | Parser.REC -> "rec"
-  | Parser.LAMBDA -> "lambda"
-  | Parser.FORALL -> "forall"
-  | Parser.SOME -> "some"
-  | Parser.ARROW -> "->"
-  | Parser.IF -> "if"
-  | Parser.TYPE -> "type"
-  | Parser.CTOR n -> n
-  | Parser.NAME n -> n
+  | Parser.LACC -> "{"
+  | Parser.RACC -> "}"
+  | Parser.EQUAL -> "="
+  | Parser.POINT -> "."
+  | Parser.DASH -> "-"
+  | Parser.MARK -> "?"
+  | Parser.TILDE -> "~"
+  | Parser.PLUS -> "+"
+  | Parser.STAR -> "*"
+  | Parser.PERCENT -> "%"
+  | Parser.UPPER -> ">"
+  | Parser.LOWER -> "<"
+  | Parser.SLASH -> "/"
+  | Parser.BACKSLASH -> "\\"
+  | Parser.REC -> "Y"
+  | Parser.FORALL -> "V"
+  | Parser.SOME -> "E"
+  | Parser.UNAME n -> n
+  | Parser.LNAME n -> n
   | Parser.NUMBER n -> string_of_int n
   | Parser.BOOL b -> if b then "true" else "false"
   | Parser.CHAR c -> String.make 1 c
   | Parser.EOF -> "<EOF>"
-*)
-
-let string_of_token = failwith "unimplemented"
 
 }
