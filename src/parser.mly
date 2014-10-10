@@ -42,8 +42,11 @@ let replace ids ty =
     | Abs (ids, ty) ->
       Abs (ids, aux ty)
     | Alias _ -> assert false (** It's premature *)
-    | Set l ->
-      Set (Type.Set.map aux l)
+    | Set row -> Set (aux row)
+    | Record row -> Record (aux row)
+    | RowEmpty -> RowEmpty
+    | RowExtend (map, row) ->
+      RowExtend (Set.map (List.map aux) map, aux row)
   in (List.rev !lst, aux ty)
 
 let reduce (lst, stop) startpos endpos =
@@ -59,14 +62,20 @@ let reduce (lst, stop) startpos endpos =
 
 %}
 
-%token <string> CTOR
-%token <string> NAME
+%token <string> UNAME
+%token <string> LNAME
+
 %token <int> NUMBER
 %token <bool> BOOL
 %token <char> CHAR
-%token MATCH LET LAMBDA FORALL SOME REC IF TYPE
-%token LPAR RPAR LBRA RBRA
-%token ARROW COMMA SEMICOLON PIPE COLON
+
+%token LPAR RPAR LBRA RBRA LACC RACC
+
+%token COLON SEMICOLON PIPE COMMA EQUAL POINT BACKSLASH MARK DASH PLUS STAR
+%token PERCENT SLASH UPPER LOWER TILDE
+
+%token REC FORALL SOME ARROW
+
 %token EOF
 
 %start single_expr
@@ -97,14 +106,18 @@ ulist(C, X):
   { [ x ] }
 
 exprs:
-  | LPAR TYPE n = NAME t = ty RPAR r = exprs
+  | LPAR EQUAL  n = LNAME t = ty RPAR   r = exprs
   { Ast.Alias (Location.make $startpos $endpos, n, t, r) }
-  | LPAR LET n = NAME e = expr RPAR r = exprs
+
+  | LPAR COLON  n = LNAME e = expr RPAR r = exprs
   { Ast.Let (Location.make $startpos $endpos($5), n, e, r) }
-  | LPAR REC n = NAME e = expr RPAR r = exprs
+
+  | LPAR REC    n = LNAME e = expr RPAR r = exprs
   { Ast.Rec (Location.make $startpos $endpos($5), n, e, r) }
+
   | e = expr r = exprs
   { Ast.Seq (Location.make $startpos $endpos(e), e, r) }
+
   | EOF
   { Ast.Unit (Location.make $startpos $endpos) }
 
@@ -117,60 +130,117 @@ single_ty:
   { a }
 
 expr:
-  | LPAR LET LPAR n = NAME e = expr RPAR c = expr RPAR
+  | LPAR EQUAL        LPAR n = LNAME t = ty RPAR    e = expr RPAR
+  { Ast.Alias (Location.make $startpos $endpos, n, t, e) }
+  | LPAR COLON        LPAR n = LNAME e = expr RPAR  c = expr RPAR
   { Ast.Let (Location.make $startpos $endpos, n, e, c) }
-  | LPAR REC LPAR n = NAME e = expr RPAR c = expr RPAR
+  | LPAR REC          LPAR n = LNAME e = expr RPAR  c = expr RPAR
   { Ast.Rec (Location.make $startpos $endpos, n, e, c) }
-  | LPAR LAMBDA l = slist(param) e = expr RPAR
+  | LPAR BACKSLASH    l = slist(param)              e = expr RPAR
   { Ast.Abs (Location.make $startpos $endpos, l, e) }
+  | LPAR PIPE         e = expr                      l = branch+ RPAR
+  { Ast.Match (Location.make $startpos $endpos, e, l) }
+  | LPAR MARK         i = expr                      a = expr b = expr RPAR
+  { Ast.If (Location.make $startpos $endpos, i, a, b) }
+
+  | x = expr_infix { x }
+  | x = expr_atom { x }
+  | x = expr_app { x }
+  | x = expr_seq { x }
+  | x = expr_ann { x }
 
   (** XXX: Conflict is here *)
-  | LPAR c = CTOR e = expr RPAR
+  | LPAR TILDE c = UNAME e = expr RPAR
   { Ast.Variant (Location.make $startpos $endpos, c, e) }
 
-  | LPAR l = ulist(COMMA, expr) RPAR
-  { Ast.Tuple (Location.make $startpos $endpos, l) }
-  | c = CTOR
-  { let pos = Location.make $startpos $endpos in
-    Ast.Variant (pos, c, Ast.Unit pos) }
-  | n = NAME
-  { Ast.Var (Location.make $startpos $endpos, n) }
-  | LPAR e = expr RPAR
-  { e }
-  | LPAR f = expr a = expr+ RPAR
-  { Ast.App (Location.make $startpos $endpos, f, a) }
-  | LBRA a = expr o = expr b = expr RBRA
-  { Ast.App (Location.make $startpos $endpos, o, [a; b]) }
-  | LPAR IF i = expr a = expr b = expr RPAR
-  { Ast.If (Location.make $startpos $endpos, i, a, b) }
+expr_ann:
   | a = expr COLON n = ann
   { Ast.Ann (Location.make $startpos $endpos, a, n) }
+
+expr_infix:
+  | LBRA a = expr PLUS b = expr RBRA
+  { let op = Ast.Var (Location.make $startpos($3) $endpos($3), "+")
+    in Ast.App (Location.make $startpos $endpos, op, [a; b]) }
+  | LBRA a = expr DASH b = expr RBRA
+  { let op = Ast.Var (Location.make $startpos($3) $endpos($3), "-")
+    in Ast.App (Location.make $startpos $endpos, op, [a; b]) }
+  | LBRA a = expr STAR b = expr RBRA
+  { let op = Ast.Var (Location.make $startpos($3) $endpos($3), "*")
+    in Ast.App (Location.make $startpos $endpos, op, [a; b]) }
+  | LBRA a = expr SLASH b = expr RBRA
+  { let op = Ast.Var (Location.make $startpos($3) $endpos($3), "/")
+    in Ast.App (Location.make $startpos $endpos, op, [a; b]) }
+  | LBRA a = expr PERCENT b = expr RBRA
+  { let op = Ast.Var (Location.make $startpos($3) $endpos($3), "%")
+    in Ast.App (Location.make $startpos $endpos, op, [a; b]) }
+  | LBRA a = expr UPPER b = expr RBRA
+  { let op = Ast.Var (Location.make $startpos($3) $endpos($3), ">")
+    in Ast.App (Location.make $startpos $endpos, op, [a; b]) }
+  | LBRA a = expr LOWER b = expr RBRA
+  { let op = Ast.Var (Location.make $startpos($3) $endpos($3), "<")
+    in Ast.App (Location.make $startpos $endpos, op, [a; b]) }
+  | LBRA a = expr o = expr b = expr RBRA
+  { Ast.App (Location.make $startpos $endpos, o, [a; b]) }
+
+expr_seq:
   | LBRA lst = alist(SEMICOLON, expr) RBRA
   { reduce lst $startpos $endpos }
+
+expr_app:
+  | LPAR f = expr a = expr+ RPAR
+  { Ast.App (Location.make $startpos $endpos, f, a) }
+  | LPAR COMMA l = expr+ RPAR
+  { Ast.Tuple (Location.make $startpos $endpos, l) }
+  | LPAR PLUS l = expr+ RPAR
+  { let op = Ast.Var (Location.make $startpos($2) $endpos($2), "+")
+    in Ast.App (Location.make $startpos $endpos, op, l) }
+  | LPAR DASH l = expr+ RPAR
+  { let op = Ast.Var (Location.make $startpos($2) $endpos($2), "-")
+    in Ast.App (Location.make $startpos $endpos, op, l) }
+  | LPAR STAR l = expr+ RPAR
+  { let op = Ast.Var (Location.make $startpos($2) $endpos($2), "*")
+    in Ast.App (Location.make $startpos $endpos, op, l) }
+  | LPAR SLASH l = expr+ RPAR
+  { let op = Ast.Var (Location.make $startpos($2) $endpos($2), "/")
+    in Ast.App (Location.make $startpos $endpos, op, l) }
+  | LPAR PERCENT l = expr+ RPAR
+  { let op = Ast.Var (Location.make $startpos($2) $endpos($2), "%")
+    in Ast.App (Location.make $startpos $endpos, op, l) }
+  | LPAR UPPER l = expr+ RPAR
+  { let op = Ast.Var (Location.make $startpos($2) $endpos($2), ">")
+    in Ast.App (Location.make $startpos $endpos, op, l) }
+  | LPAR LOWER l = expr+ RPAR
+  { let op = Ast.Var (Location.make $startpos($2) $endpos($2), "<")
+    in Ast.App (Location.make $startpos $endpos, op, l) }
+
+expr_atom:
   | i = NUMBER
   { Ast.Int (Location.make $startpos $endpos, i) }
   | b = BOOL
   { Ast.Bool (Location.make $startpos $endpos, b) }
   | c = CHAR
   { Ast.Char (Location.make $startpos $endpos, c) }
-  | LPAR TYPE LPAR n = NAME t = ty RPAR e = expr RPAR
-  { Ast.Alias (Location.make $startpos $endpos, n, t, e) }
   | LPAR RPAR
   { Ast.Unit (Location.make $startpos $endpos) }
-  | LPAR MATCH e = expr l = branch+ RPAR
-  { Ast.Match (Location.make $startpos $endpos, e, l) }
+  | c = UNAME
+  { let pos = Location.make $startpos $endpos in
+    Ast.Variant (pos, c, Ast.Unit pos) }
+  | n = LNAME
+  { Ast.Var (Location.make $startpos $endpos, n) }
+  | LPAR e = expr RPAR
+  { e }
 
 branch:
   | LPAR p = pattern e = expr RPAR
   { (p, e) }
 
 pattern:
-  | c = CTOR
+  | c = UNAME
   { let pos = Location.make $startpos $endpos in
     Pattern.Variant (pos, c, Pattern.Unit pos) }
-  | LPAR c = CTOR e = pattern RPAR
+  | LPAR c = UNAME e = pattern RPAR
   { Pattern.Variant (Location.make $startpos $endpos, c, e) }
-  | n = NAME
+  | n = LNAME
   { Pattern.Var (Location.make $startpos $endpos, n) }
   | i = NUMBER
   { Pattern.Int (Location.make $startpos $endpos, i) }
@@ -180,44 +250,40 @@ pattern:
   { Pattern.Char (Location.make $startpos $endpos, c) }
   | LPAR RPAR
   { Pattern.Unit (Location.make $startpos $endpos) }
-  | LPAR l = ulist(COMMA, pattern) RPAR
+  | LPAR COMMA l = pattern+ RPAR
   { Pattern.Tuple (Location.make $startpos $endpos, l) }
   | LPAR x = pattern RPAR
   { x }
 
 param:
-  | x = NAME
+  | x = LNAME
   { (x, None) }
-  | x = NAME COLON n = ann
+  | x = LNAME COLON n = ann
   { (x, Some n) }
 
-ty_variant:
-  | c = CTOR
-  { (c, Type.unit) }
-  | LPAR c = CTOR ty = ty RPAR
-  { (c, ty) }
-
 ty:
-  | n = NAME
+  | n = LNAME
   { Type.Const n }
   | LPAR f = ty a = ty+ RPAR
   { Type.App (f, a) }
-  | LPAR c = alist(ARROW, ty) RPAR
+  | LPAR c = alist(UPPER, ty) RPAR
   { Type.Arrow c }
   | LPAR x = ty RPAR
   { x }
+  (*
   | LPAR l = ulist(PIPE, ty_variant) RPAR
   { Type.Set (Type.Set.of_list l) }
-  | LPAR FORALL l = slist(NAME) x = ty RPAR
+  *)
+  | LPAR FORALL     l = slist(LNAME) x = ty RPAR
   { let (ids, ty) = replace l x in
     match ids with
     | [] -> ty
     | _ -> Type.Forall (ids, ty) }
-  | LPAR LAMBDA l = slist(NAME) x = ty RPAR
+  | LPAR BACKSLASH  l = slist(LNAME) x = ty RPAR
   { Type.Abs (l, x) }
 
 ann:
   | x = ty
   { ([], x) }
-  | LPAR SOME l = slist(NAME) x = ty RPAR
+  | LPAR SOME l = slist(LNAME) x = ty RPAR
   { replace l x }
