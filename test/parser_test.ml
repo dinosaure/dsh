@@ -73,48 +73,51 @@ let tests =
     (")", Fail);
     ("())", Fail);
     ("x", OK (Var "x"));
-    ("(lambda (x) x)", OK (Abs ([("x", None)], Var "x")));
-    ("(lambda x x)", Fail);
+    ("(\\ (x) x)", OK (Abs ([("x", None)], Var "x")));
+    ("(\\ x x)", Fail);
     ("(f x y)", OK (App (Var "f", [Var "x"; Var "y"])));
     ("((f x) y)", OK (App (App (Var "f", [Var "x"]), [Var "y"])));
     ("(f x) y", Fail);
-    ("(let (f (lambda (x y) (g x y))) (f a b))",
+    ("(: (f (\\ (x y) (g x y))) (f a b))",
      OK (Let ("f",
               Abs ([("x", None); ("y", None)],
                    App (Var "g", [Var "x"; Var "y"])),
               App (Var "f", [Var "a"; Var "b"]))));
-    ("(let (x a) (let (y b) (f x y)))",
+    ("(: (x a) (: (y b) (f x y)))",
      OK (Let ("x", Var "a",
               (Let ("y", Var "b",
                     App (Var "f", [Var "x"; Var "y"]))))));
     ("f x", Fail);
-    ("(let (a one))", Fail);
-    ("((let) (a one) a)", Fail);
-    ("(let (a one) a)",
+    ("(: (a one))", Fail);
+    ("((:) (a one) a)", Fail);
+    ("(: (a one) a)",
      OK (Let ("a", Var "one", Var "a")));
     ("()", OK Unit);
     ("(id x))", Fail);
-    ("(Foo x)", OK (Variant ("Foo", Var "x")));
+    ("(~ Foo x)", OK (Variant ("Foo", Var "x")));
     ("()", OK Unit);
     ("(+ 21 21)", OK (App (Var "+", [Int 21; Int 21])));
-    ("(let (f a) f)", OK (Let ("f", Var "a", Var "f")));
-    ("(type (foo bar) x)", OK (Alias ("foo", Type.Const "bar", Var "x")));
-    ("(type foo bar x)", Fail);
-    ("(let f a x)", Fail);
+    ("(: (f a) f)", OK (Let ("f", Var "a", Var "f")));
+    ("(. (foo bar) x)", OK (Alias ("foo", Type.Const "bar", Var "x")));
+    ("(. foo bar x)", Fail);
+    ("(: f a x)", Fail);
     ("Foo x", Fail);
+    (*
     ("x : (Foo | Bar)", OK (Ann (Var "x",
-                            ([], Type.Set (Type.Set.of_list
-                                       [("Foo", Type.unit);
-                                        ("Bar", Type.unit)])))));
+                            ([], Type.Set
+                                   (Type.RowExtend (Type.Set.of_list
+                                     [("Foo", [Type.unit]);
+                                      ("Bar", [Type.unit])], Type.RowEmpty))))));
     ("x : ((Foo int))", OK (Ann (Var "x",
                             ([], Type.Set (Type.Set.of_list
                                        [("Foo", Type.int)])))));
-    ("((type) (f a) x)", Fail);
-    ("(if a b c)", OK (If (Var "a", Var "b", Var "c")));
-    ("((if) a b c)", Fail);
-    ("(lambda (x : int) x)",
+    *)
+    ("((.) (f a) x)", Fail);
+    ("(? a b c)", OK (If (Var "a", Var "b", Var "c")));
+    ("((?) a b c)", Fail);
+    ("(\\ (x : int) x)",
      OK (Abs ([("x", Some ([], Type.int))], Var "x")));
-    ("(lambda (x) x) : id",
+    ("(\\ (x) x) : id",
      OK (Ann (Abs ([("x", None)], Var "x"), ([], Type.Const "id"))));
   ]
 

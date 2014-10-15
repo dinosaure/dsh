@@ -7,58 +7,56 @@ let add expr env =
 
 let core =
   Synthesis.Environment.empty
-  |> add "id      : (forall (a) (a -> a))"
-  |> add "choose  : (forall (a) (a -> a -> a))"
-  |> add "apply   : (forall (a b) ((a -> b) -> a -> b))"
-  |> add "const   : (forall (a b) (a -> b -> a))"
+  |> add "id      : (V (a) (a > a))"
+  |> add "choose  : (V (a) (a > a > a))"
+  |> add "apply   : (V (a b) ((a > b) > a > b))"
+  |> add "const   : (V (a b) (a > b > a))"
 
-  |> add "head    : (forall (a) ((list a) -> a))"
-  |> add "tail    : (forall (a) ((list a) -> (list a)))"
-  |> add "nill    : (forall (a) (list a))"
-  |> add "cons    : (forall (a) (a -> (list a) -> (list a)))"
-  |> add "single  : (forall (a) (a -> (list a)))"
-  |> add "map     : (forall (a b) ((a -> b) -> (list a) -> (list b)))"
-  |> add "length  : (forall (a) ((list a) -> int))"
-  |> add "empty   : (forall (a) ((list a) -> bool))"
+  |> add "head    : (V (a) ((list a) > a))"
+  |> add "tail    : (V (a) ((list a) > (list a)))"
+  |> add "nill    : (V (a) (list a))"
+  |> add "cons    : (V (a) (a > (list a) > (list a)))"
+  |> add "single  : (V (a) (a > (list a)))"
+  |> add "map     : (V (a b) ((a > b) > (list a) > (list b)))"
+  |> add "length  : (V (a) ((list a) > int))"
+  |> add "empty   : (V (a) ((list a) > bool))"
 
-  |> add "succ    : (int -> int)"
-  |> add "pred    : (int -> int)"
-  |> add "+       : (int -> int -> int)"
-  |> add "-       : (int -> int -> int)"
-  |> add "*       : (int -> int -> int)"
-  |> add "/       : (int -> int -> int)"
-  |> add "%       : (int -> int -> int)"
+  |> add "succ    : (int > int)"
+  |> add "pred    : (int > int)"
+  |> add "+       : (int > int > int)"
+  |> add "-       : (int > int > int)"
+  |> add "*       : (int > int > int)"
+  |> add "/       : (int > int > int)"
+  |> add "%       : (int > int > int)"
 
-  |> add "=       : (forall (a) (a -> a -> bool))"
-  |> add "==      : (forall (a) (a -> a -> bool))"
-  |> add "<>      : (forall (a) (a -> a -> bool))"
-  |> add "!=      : (forall (a) (a -> a -> bool))"
-  |> add ">       : (int -> int -> bool)"
-  |> add "<       : (int -> int -> bool)"
-  |> add ">=      : (int -> int -> bool)"
-  |> add "<=      : (int -> int -> bool)"
-  |> add "not     : (bool -> bool)"
-  |> add "and     : (bool -> bool -> bool)"
-  |> add "or      : (bool -> bool -> bool)"
+  |> add "=       : (V (a) (a > a > bool))"
+  |> add "<>      : (V (a) (a > a > bool))"
+  |> add ">       : (int > int > bool)"
+  |> add "<       : (int > int > bool)"
+  |> add ">=      : (int > int > bool)"
+  |> add "<=      : (int > int > bool)"
+  |> add "not     : (bool > bool)"
+  |> add "and     : (bool > bool > bool)"
+  |> add "or      : (bool > bool > bool)"
 
-  |> add "fst     : (forall (a b) ((* a b) -> a))"
-  |> add "snd     : (forall (a b) ((* a b) -> b))"
+  |> add "fst     : (V (a b) ((* a b) > a))"
+  |> add "snd     : (V (a b) ((* a b) > b))"
 
-  |> add "#num    : (int -> unit)"
-  |> add "#bln    : (bool -> unit)"
-  |> add "#chr    : (char -> unit)"
+  |> add "num     : (int > unit)"
+  |> add "bln     : (bool > unit)"
+  |> add "chr     : (char > unit)"
 
-  |> add "any     : (forall (a) a)"
-  |> add "magic   : (forall (a b) (a -> b))"
-  |> add "poly    : ((forall (a) (a -> a)) -> (* int bool))"
-  |> add "special : (((forall (a) (a -> a)) -> (forall (a) (a -> a)))
-                     -> (forall (a) (a -> a)))"
-  |> add "id'     : ((forall (a) (a -> a)) -> (forall (a) (a -> a)))"
-  |> add "id''    : (forall (a) ((forall (a) (a -> a)) -> (a -> a)))"
-  |> add "ids     : (list (forall (a) (a -> a)))"
-  |> add "ids'    : ((list (forall (a) (a -> a)))
-                     -> (list (forall (a) (a -> a))))"
-  |> add "magid   : ((forall (a b) (a -> b)) -> (forall (a b) (a -> b)))"
+  |> add "any     : (V (a) a)"
+  |> add "magic   : (V (a b) (a > b))"
+  |> add "poly    : ((V (a) (a > a)) > (* int bool))"
+  |> add "special : (((V (a) (a > a)) > (V (a) (a > a)))
+                     > (V (a) (a > a)))"
+  |> add "id'     : ((V (a) (a > a)) > (V (a) (a > a)))"
+  |> add "id''    : (V (a) ((V (a) (a > a)) > (a > a)))"
+  |> add "ids     : (list (V (a) (a > a)))"
+  |> add "ids'    : ((list (V (a) (a > a)))
+                     > (list (V (a) (a > a))))"
+  |> add "magid   : ((V (a b) (a > b)) > (V (a b) (a > b)))"
 
 let add name func env =
   Interpreter.Environment.add name (Interpreter.Primitive func) env
@@ -85,13 +83,13 @@ let runtime =
   |> add "<=" (function [Int a; Int b] -> Bool (a <= b) | _ -> raise_error "<=")
   |> add "not" (function [Bool a] -> Bool (not a) | _ -> raise_error "not")
 
-  |> add "#num"
+  |> add "num"
     (function [Int a] -> print_int a; Unit
             | _ -> raise_error "#num")
-  |> add "#bln"
+  |> add "bln"
     (function [Bool b] -> print_string (if b then "true" else "false"); Unit
             | _ -> raise_error "#bln")
-  |> add "#chr"
+  |> add "chr"
     (function [Char c] -> print_string (String.make 1 c); Unit
             | _ -> raise_error "#chr")
 

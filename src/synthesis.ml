@@ -89,8 +89,12 @@ let compute_variable id level ty =
     | Type.Forall (_, ty) -> aux ty
     | Type.Abs (_, ty) -> aux ty
     | Type.Const _ -> ()
+    | Type.RowEmpty -> ()
     | Type.Alias (_, ty) -> aux ty
-    | Type.Set l -> Type.Set.iter (fun _ -> aux) l
+    | Type.RowExtend (map, rest) ->
+      Type.Set.iter (fun _ -> List.iter aux) map; aux rest
+    | Type.Set row -> aux row
+    | Type.Record row -> aux row
   in aux ty
 
 (** substitution : takes a list of `Bound` variables [ids], a list of
@@ -132,8 +136,11 @@ let substitution ids tys ty =
     | Type.Abs (ids, ty) ->
       Type.Abs (ids, ty)
     | Type.Alias (name, ty) -> Type.Alias (name, aux map ty)
-    | Type.Set l ->
-      Type.Set (Type.Set.map (aux map) l)
+    | Type.Set row -> Type.Set (aux map row)
+    | Type.Record row -> Type.Record (aux map row)
+    | Type.RowEmpty as ty -> ty
+    | Type.RowExtend (set, rest) ->
+      Type.RowExtend (Type.Set.map (List.map (aux map)) set, aux map rest)
   in aux (Map.of_lists ids tys) ty
 
 let catch_generic_variable ty =
@@ -159,8 +166,11 @@ let catch_generic_variable ty =
     | Type.Forall (_, ty) -> aux ty
     | Type.Abs (_, ty) -> aux ty
     | Type.Alias (_, ty) -> aux ty
-    | Type.Set l ->
-      Type.Set.iter (fun _ -> aux) l
+    | Type.Record row -> aux row
+    | Type.Set row -> aux row
+    | Type.RowEmpty -> ()
+    | Type.RowExtend (map, rest) ->
+      Type.Set.iter (fun _ -> List.iter aux) map; aux rest
   in aux ty; set
 
 (** union : takes a list of `Generic` type variables and types [ty1] and type
@@ -208,10 +218,12 @@ let rec expand ~gamma ty =
       Type.Forall (lst, aux ty)
     | Type.Alias (name, ty) ->
       Type.Alias (name, aux ty)
-    | Type.Set l ->
-      Type.Set (Type.Set.map aux l)
     | Type.Abs (lst, ty) ->
       Type.Abs (lst, aux ty)
+    | Type.Record row -> Type.Record (aux row)
+    | Type.Set row -> Type.Set (aux row)
+    | Type.RowExtend (map, rest) ->
+      Type.RowExtend (Type.Set.map (List.map aux) map, aux rest)
     | ty -> ty
   in aux ty
 
@@ -292,24 +304,75 @@ let rec unification t1 t2 =
       if union lst forall1 forall2
       then raise (Conflict (forall1, forall2))
 
-    (** The unification of the variants is done by comparing the names of
-        constructor and types respectively.
-    *)
-    | Type.Set l1, Type.Set l2 ->
-      begin
-        try
-          Type.Set.iter2
-            (fun (ctor1, ty1) (ctor2, ty2) ->
-              if ctor1 = ctor2 then unification ty1 ty2
-              else raise (Conflict (Type.Set l1, Type.Set l2)))
-            l1 l2
-        with Invalid_argument "Type.Set.iter2" -> raise (Conflict (t1, t2))
-      end
+    | Type.Record row1, Type.Record row2 -> unification row1 row2
+    | Type.Set row1, Type.Set row2 -> unification row1 row2
+    | Type.RowEmpty, Type.RowEmpty -> ()
+    | (Type.RowExtend _ as row1), (Type.RowExtend _ as row2) ->
+      unification_rows row1 row2
 
     | Type.Alias (_, ty1), ty2 -> unification ty1 ty2
     | ty1, Type.Alias (_, ty2) -> unification ty1 ty2
 
     | ty1, ty2 -> raise (Conflict (ty1, ty2))
+
+and unification_rows row1 row2 =
+  let map1, rest1 = Type.compact row1 in
+  let map2, rest2 = Type.compact row2 in
+
+  let rec unification_types lst1 lst2 = match lst1, lst2 with
+    | ty1 :: rest1, ty2 :: rest2 ->
+      unification ty1 ty2; unification_types rest1 rest2
+    | _ -> lst1, lst2
+  in
+
+  let rec unification_labels missing1 missing2 labels1 labels2 =
+    match labels1, labels2 with
+    | [], [] -> missing1, missing2
+    | [], _ -> (Type.Set.add_list missing1 labels2, missing2)
+    | _, [] -> (missing1, Type.Set.add_list missing2 labels1)
+    | (label1, tys1) :: rest1, (label2, tys2) :: rest2 ->
+      begin match String.compare label1 label2 with
+        | 0 ->
+            let missing1, missing2 = match unification_types tys1 tys2 with
+            | [], [] -> missing1, missing2
+            | ty1s, [] -> missing1, Type.Set.add label1 tys1 missing2
+            | [], tys2 -> Type.Set.add label2 tys2 missing1, missing2
+            | _ -> assert false
+          in
+          unification_labels missing1 missing2 rest1 rest2
+        | x when x < 0 ->
+          unification_labels
+            missing1 (Type.Set.add label1 tys1 missing2)
+            rest1 labels2
+        | x ->
+          unification_labels
+            (Type.Set.add label2 tys2 missing1) missing2
+            labels1 rest2
+      end
+  in
+  let missing1, missing2 = unification_labels
+    Type.Set.empty Type.Set.empty
+    (Type.Set.bindings map1) (Type.Set.bindings map2)
+  in
+  match Type.Set.is_empty missing1, Type.Set.is_empty missing2 with
+  | true, true -> unification rest1 rest2
+  | true, false -> unification rest2 (Type.RowExtend (missing2, rest1))
+  | false, true -> unification rest1 (Type.RowExtend (missing1, rest2))
+  | false, false ->
+    match rest1 with
+    | Type.RowEmpty ->
+      unification rest1 (Type.RowExtend (missing1, Type.Variable.make 0))
+    | Type.Var ({ contents = Type.Unbound (_, level) } as var) ->
+      begin
+        let rest' = Type.Variable.make level in
+        unification rest2 (Type.RowExtend (missing2, rest'));
+        match !var with
+          | Type.Link _ ->
+            raise (Recursive_type (Type.RowExtend (missing2, rest')))
+          | _ -> ();
+        unification rest1 (Type.RowExtend (missing1, rest'))
+      end
+    | _ -> assert false
 
 (** specialization : instantiates a `Forall` type by substituting bound type
     variables by fresh `Unbound` type variables, wich can then by unified with
@@ -325,6 +388,8 @@ let specialization level ty =
       substitution ids lst ty
     | Type.Var { contents = Type.Link ty } -> aux level ty
     | Type.Alias (name, ty) -> Type.Alias (name, aux level ty)
+    | Type.RowExtend (map, rest) ->
+      Type.RowExtend (Type.Set.map (List.map (aux level)) map, aux level rest)
     | ty -> ty
   in aux level ty
 
@@ -361,9 +426,12 @@ let generalization level ty =
     | Type.Forall (_, ty) -> aux ty
     | Type.Const _ -> ()
     | Type.Alias (_, ty) -> aux ty
-    | Type.Set l ->
-      Type.Set.iter (fun _ -> aux) l
     | Type.Abs (_, ty) -> aux ty
+    | Type.Set row -> aux row
+    | Type.Record row -> aux row
+    | Type.RowEmpty -> ()
+    | Type.RowExtend (map, rest) ->
+      Type.Set.iter (fun _ -> List.iter aux) map; aux rest
   in aux ty; match !acc with
   | [] -> ty
   | ids -> Type.Forall (List.rev ids, ty)
@@ -552,29 +620,17 @@ let rec eval
   | Ast.Tuple (_, l) ->
     Type.App (Type.tuple, List.map (eval ~gamma ~env ~level) l)
 
-  | Ast.Variant (loc, ctor, expr) when Gamma.Datatype.exists ctor gamma ->
+  | Ast.Variant (loc, ctor, expr) ->
     (fun () ->
-       let (name, ty) =
-         Gamma.Datatype.find ctor gamma
-         |> function
-            | Some (name, ty) ->
-              let ty = ty
-                       |> Type.copy
-                       |> function Type.Set l -> l
-                                 | _ -> assert false
-              in (name, ty)
-            | _ -> assert false
-       in
-       let v' = eval ~gamma ~env ~level expr in
-       let v' = specialization (level + 1) v' in
-       let v' = Type.Set.add ctor v' ty in
-       unification
-         (Type.Set ty |> expand ~gamma |> Type.normalize)
-         (Type.Set v');
-       Type.Alias (name, Type.Set ty))
+      let rest' = Type.Variable.make level in
+      let ctor' = Type.Variable.make level in
+      let ptr' = ctor' in
+      let result' =
+        Type.Set (Type.RowExtend (Type.Set.singleton ctor [ctor'], rest')) in
+      let expr' = (eval ~gamma ~env ~level expr) in
+      unification ptr' expr';
+      result')
     >!= raise_with_loc loc
-  | Ast.Variant (loc, ctor, _) ->
-    raise (Error (loc, Unbound_constructor ctor))
 
   | Ast.Match (loc, expr, patterns) ->
     (fun () ->
@@ -643,16 +699,6 @@ and compute_pattern gamma env level = function
         ([], env) l
     in (Type.App (Type.tuple, List.rev tys), new_env)
   | Pattern.Variant (_, ctor, expr) ->
-    let (name, ty) =
-      try
-        let (name, ty) = Gamma.Datatype.lookup ctor gamma in
-        let ty = ty
-                 |> Type.copy
-                 |> function Type.Set l -> l
-                           | _ -> raise (Unbound_constructor ctor)
-        in (name, ty)
-      with Not_found -> raise (Unbound_constructor ctor)
-    in
-    let (sty, new_env) = compute_pattern gamma env level expr in
-    let ty = Type.Set.add ctor sty ty in
-    (Type.Alias (name, Type.Set ty), new_env)
+    let (expr', env') = compute_pattern gamma env level expr in
+    let rest' = Type.Variable.make level in
+    (Type.Set (Type.RowExtend (Type.Set.singleton ctor [expr'], rest')), env')

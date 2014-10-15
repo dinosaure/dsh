@@ -8,26 +8,33 @@ end
 module Set : sig
   include (module type of Map.Make(String))
 
+  val add_list : 'a t -> (string * 'a) list -> 'a t
+
   val of_list : (string * 'a) list -> 'a t
   val to_list : 'a t -> (string * 'a) list
 
   val iter2 : ((string * 'a) -> (string * 'b) -> unit) -> 'a t -> 'b t -> unit
+  val merge : ('a list) t -> ('a list) t -> ('a list) t
 end
 
 type t =
-  | Const of string
-  | App of (t * t list)
-  | Arrow of (t list * t)
-  | Var of var ref
-  | Forall of (int list * t)
-  | Alias of (string * t)
-  | Set of t Set.t
+  | Const of string                       (* like `int` *)
+  | App of (t * t list)                   (* like `(list int)` *)
+  | Arrow of (t list * t)                 (* like `int -> int` *)
+  | Var of var ref                        (* variable of type *)
+  | Forall of (int list * t)              (* like `(forall (l) t)` *)
+  | Alias of (string * t)                 (* alias of type *)
+  | Set of row                            (* like `[ A | B ]` *)
+  | Record of row                         (* like `{ a; b }` *)
+  | RowEmpty
+  | RowExtend of ((t list) Set.t * row)
   | Abs of (string list * t)
 and var =
   | Unbound of int * int
   | Bound of int
   | Link of t
   | Generic of int
+and row = t
 
 module Variable : sig
   val next : unit -> int
@@ -44,6 +51,7 @@ val bool : t
 val unit : t
 val tuple : t
 
+val compact : row -> row list Set.t * row
 val unlink : t -> t
 val is_monomorphic : t -> bool
 

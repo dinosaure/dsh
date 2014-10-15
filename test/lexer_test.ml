@@ -9,9 +9,11 @@ let tests =
   [
     ("", OK []);
     ("  \t\n\r  \r\n\t", OK []);
+    (*
     ("())lambda let_ _1Ma",
      OK [LPAR; RPAR; RPAR; LAMBDA; NAME "let_"; NAME "_1Ma"]);
     ("lambda let forall", OK [LAMBDA; LET; FORALL]);
+    *)
     ("λ", Fail);
     ("x$", Fail);
   ]

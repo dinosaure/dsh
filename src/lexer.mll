@@ -21,7 +21,7 @@ let char_of_hexa a b =
 
 }
 
-let name = ['_' 'A'-'Z' 'a'-'z' '0'-'9']
+let name = ['_' 'A'-'Z' 'a'-'z' '0'-'9'] (['\''] *)
 let uname = ['A'-'Z'] name *
 let lname = ['a'-'z'] name *
 
@@ -57,6 +57,9 @@ rule token = parse
   | '<'                                   { Parser.LOWER }
   | '/'                                   { Parser.SLASH }
   | '\\'                                  { Parser.BACKSLASH }
+  | "<>"                                  { Parser.DIFF }
+  | ">="                                  { Parser.EQUP }
+  | "<="                                  { Parser.EQLO }
 
   | "Y"                                   { Parser.REC }
   | "V"                                   { Parser.FORALL }
@@ -101,6 +104,9 @@ let string_of_token = function
   | Parser.LOWER -> "<"
   | Parser.SLASH -> "/"
   | Parser.BACKSLASH -> "\\"
+  | Parser.DIFF -> "<>"
+  | Parser.EQUP -> ">="
+  | Parser.EQLO -> "<="
   | Parser.REC -> "Y"
   | Parser.FORALL -> "V"
   | Parser.SOME -> "E"

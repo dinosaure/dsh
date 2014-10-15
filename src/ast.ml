@@ -86,16 +86,16 @@ let to_string tree =
         compute f
         (Buffer.add_list ~sep:" " compute) a
     | Abs (_, a, c) ->
-      Printf.bprintf buffer "(lambda (%a) %a)"
+      Printf.bprintf buffer "(\\ (%a) %a)"
         (Buffer.add_list ~sep:" " Buffer.add_argument) a
         compute c
     | Let (_, name, e, c) ->
-      Printf.bprintf buffer "(let (%s %a) %a)"
+      Printf.bprintf buffer "(: (%s %a) %a)"
         name
         compute e
         compute c
     | Rec (_, name, e, c) ->
-      Printf.bprintf buffer "(rec (%s %a) %a)"
+      Printf.bprintf buffer "(Y (%s %a) %a)"
         name
         compute e
         compute c
@@ -104,7 +104,7 @@ let to_string tree =
         compute e
         Buffer.add_annotation ann
     | If (_, i, a, b) ->
-      Printf.bprintf buffer "(if %a %a %a)"
+      Printf.bprintf buffer "(? %a %a %a)"
         compute i
         compute a
         compute b
@@ -120,14 +120,14 @@ let to_string tree =
       Printf.bprintf buffer "%c" c
     | Unit _ -> Buffer.add_string buffer "()"
     | Alias (_, name, ty, expr) ->
-      Printf.bprintf buffer "(type %s %s %a)"
+      Printf.bprintf buffer "(= %s %s %a)"
         name
         (Type.to_string ty)
         compute expr
     | Variant (_, ctor, Unit _) ->
       Buffer.add_string buffer ctor
     | Variant (_, ctor, expr) ->
-      Printf.bprintf buffer "(%s %a)"
+      Printf.bprintf buffer "(~ %s %a)"
         ctor
         compute expr
     | Tuple (_, l) ->
@@ -139,7 +139,7 @@ let to_string tree =
           (Pattern.to_string pattern)
           compute expr
       in
-      Printf.bprintf buffer "(match %a %a)"
+      Printf.bprintf buffer "(| %a %a)"
         compute expr
         (Buffer.add_list ~sep:" " add_branch) l
 

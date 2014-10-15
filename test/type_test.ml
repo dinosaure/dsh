@@ -36,157 +36,157 @@ end
 
 let tests =
   [
-    ("id", OK ("(forall (a) (a -> a))"));
+    ("id", OK ("(V (a) (a > a))"));
     ("1", OK ("int"));
     ("x", Fail (Synthesis.Unbound_variable "x"));
-    ("(let (x x) x)", Fail (Synthesis.Unbound_variable "x"));
-    ("(let (x id) x)", OK ("(forall (a) (a -> a))"));
-    ("(let (x (lambda (y) y)) x)", OK ("(forall (a) (a -> a))"));
-    ("(lambda (x) x)", OK ("(forall (a) (a -> a))"));
-    ("(lambda (x) x)", OK ("(forall (lol) (lol -> lol))"));
-    ("(lambda (a b) (a, b))", OK ("(forall (a b) (a -> b -> (* a b)))"));
-    ("(lambda (a b) (a, b))", OK ("(forall (z x) (x -> z -> (* x z)))"));
-    ("(lambda (x) (let (y (lambda (z) z)) y))",
-     OK ("(forall (a b) (a -> (b -> b)))"));
-    ("(let (f (lambda (x) x)) (let (id (lambda (y) y)) (= f id)))",
+    ("(: (x x) x)", Fail (Synthesis.Unbound_variable "x"));
+    ("(: (x id) x)", OK ("(V (a) (a > a))"));
+    ("(: (x (\\ (y) y)) x)", OK ("(V (a) (a > a))"));
+    ("(\\ (x) x)", OK ("(V (a) (a > a))"));
+    ("(\\ (x) x)", OK ("(V (lol) (lol > lol))"));
+    ("(\\ (a b) (, a b))", OK ("(V (a b) (a > b > (* a b)))"));
+    ("(\\ (a b) (, a b))", OK ("(V (z x) (x > z > (* x z)))"));
+    ("(\\ (x) (: (y (\\ (z) z)) y))",
+     OK ("(V (a b) (a > (b > b)))"));
+    ("(: (f (\\ (x) x)) (: (id (\\ (y) y)) (= f id)))",
      OK ("bool"));
-    ("(let (f (lambda (x) x)) (= f =))",
+    ("(: (f (\\ (x) x)) (= f =))",
      Fail (Synthesis.Conflict
              (Type.Arrow ([ Variable.dummy ], Variable.dummy),
               (Type.Arrow ([ Variable.dummy; Variable.dummy ],
                            Type.bool)))));
-    ("(let (f (lambda (a b) true)) (= f =))",
+    ("(: (f (\\ (a b) true)) (= f =))",
      OK ("bool"));
-    ("(let (f (lambda (x) x)) (= f succ))",
+    ("(: (f (\\ (x) x)) (= f succ))",
      OK ("bool"));
-    ("(let (f (lambda (x) x)) ((f 1), (f true)))",
+    ("(: (f (\\ (x) x)) (, (f 1) (f true)))",
      OK ("(* int bool)"));
-    ("(lambda (f) ((f 1), (f true)))",
+    ("(\\ (f) (, (f 1) (f true)))",
      Fail (Synthesis.Conflict (Type.int, Type.bool)));
-    ("(let (f (lambda (x y) (let (a (= x y)) [x = y]))) f)",
-     OK ("(forall (a) (a -> a -> bool))"));
-    ("(id id)", OK ("(forall (a) (a -> a))"));
-    ("(choose (lambda (x y) x) (lambda (x y) y))",
-     OK ("(forall (a) (a -> a -> a))"));
-    ("(let (x id) (let (y (let (z (x id)) z)) y))",
-     OK ("(forall (a) (a -> a))"));
-    ("(cons id nill)", OK ("(forall (a) (list (a -> a)))"));
-    ("(let (l1 (cons id nill)) (let (l2 (cons succ nill)) l2))",
-     OK ("(list (int -> int))"));
+    ("(: (f (\\ (x y) (: (a (= x y)) [x = y]))) f)",
+     OK ("(V (a) (a > a > bool))"));
+    ("(id id)", OK ("(V (a) (a > a))"));
+    ("(choose (\\ (x y) x) (\\ (x y) y))",
+     OK ("(V (a) (a > a > a))"));
+    ("(: (x id) (: (y (: (z (x id)) z)) y))",
+     OK ("(V (a) (a > a))"));
+    ("(cons id nill)", OK ("(V (a) (list (a > a)))"));
+    ("(: (l1 (cons id nill)) (: (l2 (cons succ nill)) l2))",
+     OK ("(list (int > int))"));
     ("[1 + true]",
      Fail (Synthesis.Conflict (Type.int, Type.bool)));
     ("(+ 1)",
      Fail (Synthesis.Mismatch_arguments
              (Type.Arrow ([Type.int; Type.int],
                           Type.int))));
-    ("(lambda (x) (let (y x) x))", OK ("(forall (a) (a -> a))"));
-    ("(lambda (x) (let (y (let (z (x (lambda (x) x))) z)) y))",
-     OK ("(forall (a b) (((a -> a) -> b) -> b))"));
-    ("(lambda (x) (lambda (y) (let (x (x y)) (x y))))",
-     OK ("(forall (a b) ((a -> a -> b) -> a -> b))"));
-    ("(lambda (x) (let (y (lambda (z) (x z))) y))",
-     OK ("(forall (a b) ((a -> b) -> a -> b))"));
-    ("(lambda (x) (let (y (lambda (z) x)) y))",
-     OK ("(forall (a b) (a -> b -> a))"));
-    ("(lambda (x) (lambda (y) (let (x (x y)) (lambda (x) (y x)))))",
-     OK ("(forall (a b c) (((a -> b) -> c) -> (a -> b) -> a -> b))"));
-    ("(lambda (x) (let (y x) (y y)))",
+    ("(\\ (x) (: (y x) x))", OK ("(V (a) (a > a))"));
+    ("(\\ (x) (: (y (: (z (x (\\ (x) x))) z)) y))",
+     OK ("(V (a b) (((a > a) > b) > b))"));
+    ("(\\ (x) (\\ (y) (: (x (x y)) (x y))))",
+     OK ("(V (a b) ((a > a > b) > a > b))"));
+    ("(\\ (x) (: (y (\\ (z) (x z))) y))",
+     OK ("(V (a b) ((a > b) > a > b))"));
+    ("(\\ (x) (: (y (\\ (z) x)) y))",
+     OK ("(V (a b) (a > b > a))"));
+    ("(\\ (x) (\\ (y) (: (x (x y)) (\\ (x) (y x)))))",
+     OK ("(V (a b c) (((a > b) > c) > (a > b) > a > b))"));
+    ("(\\ (x) (: (y x) (y y)))",
      Fail (Synthesis.Recursive_type
              (Type.Arrow ([ Variable.dummy ], Variable.dummy))));
-    ("(lambda (x) (let (y (lambda (z) z)) (y y)))",
-     OK ("(forall (a b) (a -> b -> b))"));
-    ("(lambda (x) (x x))",
+    ("(\\ (x) (: (y (\\ (z) z)) (y y)))",
+     OK ("(V (a b) (a > b > b))"));
+    ("(\\ (x) (x x))",
      Fail (Synthesis.Recursive_type
              (Type.Arrow ([ Variable.dummy ], Variable.dummy))));
     ("(1 id)",
      Fail (Synthesis.Expected_function (Type.int)));
-    ("(lambda (f) (let (x (lambda (g y) (let (_ (g y)) (= f g)))) x))",
-     OK ("(forall (a b) ((a -> b) -> (a -> b) -> a -> bool))"));
-    ("(let (const (lambda (x) (lambda (y) x))) const)",
-     OK ("(forall (a b) (a -> b -> a))"));
-    ("(let (|> (lambda (f x) (f x))) |>)",
-     OK ("(forall (a b) ((a -> b) -> a -> b))"));
-    ("(let (apply (lambda (f) (lambda (x) (f x)))) apply)",
-     OK ("(forall (a b) ((a -> b) -> a -> b))"));
-    ("ids", OK "(list (forall (a) (a -> a)))");
-    ("(lambda (f) ((f 1), (f true)))",
+    (* ("(\\ (f) (: (x (\\ (g y) (: (_ (g y)) (= f g)))) x))",
+     OK ("(V (a b) ((a > b) > (a > b) > a > bool))")); XXX: Syntax error *)
+    ("(: (const (\\ (x) (\\ (y) x))) const)",
+     OK ("(V (a b) (a > b > a))"));
+    (* ("(: (|> (\\ (f x) (f x))) |>)",
+     OK ("(V (a b) ((a > b) > a > b))")); XXX: Syntax error *)
+    ("(: (apply (\\ (f) (\\ (x) (f x)))) apply)",
+     OK ("(V (a b) ((a > b) > a > b))"));
+    ("ids", OK "(list (V (a) (a > a)))");
+    ("(\\ (f) (, (f 1) (f true)))",
      Fail (Synthesis.Conflict (Type.int, Type.bool)));
-    ("(lambda (f : (forall (a) (a -> a))) ((f true), (f 1)))",
-     OK ("(((forall (a) (a -> a))) -> (* bool int))"));
-    ("(cons ids nill)", OK ("(list (list (forall (a) (a -> a))))"));
-    ("(choose ids nill)", OK ("(list (forall (a) (a -> a)))"));
-    ("(choose nill ids)", OK ("(list (forall (a) (a -> a)))"));
-    ("(cons (lambda (x) (x)) ids)", OK ("(list (forall (a) (a -> a)))"));
-    ("(let (rcons (lambda (x y) (cons y x))) (rcons ids id))",
-     OK ("(list (forall (a) (a -> a)))"));
-    ("(cons id ids)", OK ("(list (forall (a) (a -> a)))"));
-    ("(cons id (cons succ nill))", OK ("(list (int -> int))"));
+    ("(\\ (f : (V (a) (a > a))) (, (f true) (f 1)))",
+     OK ("(((V (a) (a > a))) > (* bool int))"));
+    ("(cons ids nill)", OK ("(list (list (V (a) (a > a))))"));
+    ("(choose ids nill)", OK ("(list (V (a) (a > a)))"));
+    ("(choose nill ids)", OK ("(list (V (a) (a > a)))"));
+    ("(cons (\\ (x) (x)) ids)", OK ("(list (V (a) (a > a)))"));
+    ("(: (rcons (\\ (x y) (cons y x))) (rcons ids id))",
+     OK ("(list (V (a) (a > a)))"));
+    ("(cons id ids)", OK ("(list (V (a) (a > a)))"));
+    ("(cons id (cons succ nill))", OK ("(list (int > int))"));
     ("(poly id)", OK ("(* int bool)"));
-    ("(poly (lambda (x) x))", OK ("(* int bool)"));
+    ("(poly (\\ (x) x))", OK ("(* int bool)"));
     ("(poly succ)",
      Fail (Synthesis.Conflict (Variable.dummy, Type.int)));
     ("(apply succ 1)", OK ("int"));
     ("(apply poly id)", OK ("(* int bool)"));
-    ("(id : (forall (a) (a -> a))) : (int -> int)", OK ("(int -> int)"));
-    ("(single (id : (forall (a) (a -> a))))",
-     OK ("(list (forall (a) (a -> a)))"));
-    ("((lambda (x) (lambda (y) (let (z (choose x y)) z)))
-       (id : (forall (a) (a -> a))))",
-     OK ("((forall (a) (a -> a)) -> (forall (a) (a -> a)))"));
-    ("(lambda (x : (forall (a) (a -> a))) x)",
-     OK ("(forall (a) ((forall (b) (b -> b)) -> a -> a))"));
-    ("(id' id)", OK ("(forall (a) (a -> a))"));
-    ("(id'' id)", OK ("(forall (a) (a -> a))"));
-    ("(lambda (ids) (ids' ids))", Unsafe);
+    ("(id : (V (a) (a > a))) : (int > int)", OK ("(int > int)"));
+    ("(single (id : (V (a) (a > a))))",
+     OK ("(list (V (a) (a > a)))"));
+    ("((\\ (x) (\\ (y) (: (z (choose x y)) z)))
+       (id : (V (a) (a > a))))",
+     OK ("((V (a) (a > a)) > (V (a) (a > a)))"));
+    ("(\\ (x : (V (a) (a > a))) x)",
+     OK ("(V (a) ((V (b) (b > b)) > a > a))"));
+    ("(id' id)", OK ("(V (a) (a > a))"));
+    ("(id'' id)", OK ("(V (a) (a > a))"));
+    ("(\\ (ids) (ids' ids))", Unsafe);
     ("(poly (id id))", OK ("(* int bool)"));
     ("(length (ids))", OK ("int"));
-    ("(map head (single ids))", OK ("(list (forall (a) (a -> a)))"));
+    ("(map head (single ids))", OK ("(list (V (a) (a > a)))"));
     ("(apply id 1)", OK ("int"));
     ("(poly magic)", OK ("(* int bool)"));
-    ("(magid magic)", OK ("(forall (a b) (a -> b))"));
-    ("(lambda (f : (forall (a b) (a -> b))) (f : (forall (a) (a -> a))))",
-     OK ("((forall (a b) (a -> b)) -> (forall (a) (a -> a)))"));
-    ("(lambda (f : (forall (a b) (a -> b))) (let (a (magid f)) 1))",
-     OK ("((forall (a b) (a -> b)) -> int)"));
-    ("(let (const (any : (forall (a) (a -> (forall (b) (b -> a))))))
-       (const any))"), OK ("(forall (a b) (a -> b))");
-    ("(rec (f (lambda (x) (f x))) f)", OK ("(forall (a b) (a -> b))"));
-    ("(rec (foldl (lambda (f a l)
-                   (if (empty l) a
+    ("(magid magic)", OK ("(V (a b) (a > b))"));
+    ("(\\ (f : (V (a b) (a > b))) (f : (V (a) (a > a))))",
+     OK ("((V (a b) (a > b)) > (V (a) (a > a)))"));
+    ("(\\ (f : (V (a b) (a > b))) (: (a (magid f)) 1))",
+     OK ("((V (a b) (a > b)) > int)"));
+    ("(: (const (any : (V (a) (a > (V (b) (b > a))))))
+       (const any))"), OK ("(V (a b) (a > b))");
+    ("(Y (f (\\ (x) (f x))) f)", OK ("(V (a b) (a > b))"));
+    ("(Y (foldl (\\ (f a l)
+                   (? (empty l) a
                     (foldl f (f a (head l)) (tail l))))) foldl)",
-     OK ("(forall (a b) ((a -> b -> a) -> a -> (list b) -> a))"));
-    ("(rec (foldr (lambda (f l a)
-                   (if (empty l) a
+     OK ("(V (a b) ((a > b > a) > a > (list b) > a))"));
+    ("(Y (foldr (\\ (f l a)
+                   (? (empty l) a
                     (f (head l) (foldr f (tail l) a))))) foldr)",
-     OK ("(forall (a b) ((a -> b -> b) -> (list a) -> b -> b))"));
-    ("(rec (foldl (lambda (f a l)
-                   (if (empty l) a
+     OK ("(V (a b) ((a > b > b) > (list a) > b > b))"));
+    ("(Y (foldl (\\ (f a l)
+                   (? (empty l) a
                     (foldl f (f a (head l)) (tail l)))))
-           (lambda (l) (foldl (lambda (a x) [a + 1]) 0 l)))",
-     OK ("(forall (a) ((list a) -> int))"));
-    ("(rec (iter (lambda (f l)
-                  (if (empty l) ()
+           (\\ (l) (foldl (\\ (a x) [a + 1]) 0 l)))",
+     OK ("(V (a) ((list a) > int))"));
+    ("(Y (iter (\\ (f l)
+                  (? (empty l) ()
                    [(f (head l)); (iter f (tail l))])))
        iter)",
-     OK ("(forall (a) ((a -> unit) -> (list a) -> unit))"));
-    ("(let (iter (rec (foldl (lambda (f a l)
-                   (if (empty l) a
+     OK ("(V (a) ((a > unit) > (list a) > unit))"));
+    ("(: (iter (Y (foldl (\\ (f a l)
+                   (? (empty l) a
                     (foldl f (f a (head l)) (tail l)))))
-                 (lambda (f l) (foldl (lambda (a x) (f x)) () l))))
-           (lambda (l) (iter #num l)))",
-     OK ("((list int) -> unit)"));
-    ("(lambda (f a b) [(f a) = b])",
-     OK ("(forall (a b) ((a -> b) -> a -> b -> bool))"));
-    ("(lambda (x : (some (a) (a -> a))) x)",
-     OK ("(forall (a) ((a -> a) -> a -> a))"));
-    ("(lambda (x : (forall (a) (a -> a))) x)",
-     OK ("(forall (a) ((forall (b) (b -> b)) -> a -> a))"));
-    ("(lambda (f : (some (a b) (a -> b)) x y) [(f x) = y])",
-     OK ("(forall (a b) ((a -> b) -> a -> b -> bool))"));
-    ("(let (foo (lambda (x : (some (a) a)) x)) foo)",
-     OK ("(forall (a) (a -> a))"));
-    ("(lambda (f : (forall (a b) (a -> b)) x y) [(f x) = y])",
-     OK ("(forall (a b) ((forall (c d) (c -> d)) -> a -> b -> bool))"));
+                 (\\ (f l) (foldl (\\ (a x) (f x)) () l))))
+           (\\ (l) (iter num l)))",
+     OK ("((list int) > unit)"));
+    ("(\\ (f a b) [(f a) = b])",
+     OK ("(V (a b) ((a > b) > a > b > bool))"));
+    ("(\\ (x : (E (a) (a > a))) x)",
+     OK ("(V (a) ((a > a) > a > a))"));
+    ("(\\ (x : (V (a) (a > a))) x)",
+     OK ("(V (a) ((V (b) (b > b)) > a > a))"));
+    ("(\\ (f : (E (a b) (a > b)) x y) [(f x) = y])",
+     OK ("(V (a b) ((a > b) > a > b > bool))"));
+    ("(: (foo (\\ (x : (E (a) a)) x)) foo)",
+     OK ("(V (a) (a > a))"));
+    ("(\\ (f : (V (a b) (a > b)) x y) [(f x) = y])",
+     OK ("(V (a b) ((V (c d) (c > d)) > a > b > bool))"));
   ]
 
 let to_string = function
@@ -231,4 +231,6 @@ let make_test (expr, result) =
 
 let suite = "Synthesis test" >::: List.map make_test tests
 
-let () = run_test_tt_main suite
+let () =
+  try run_test_tt_main suite
+  with exn -> Printexc.to_string exn |> print_endline

@@ -36,21 +36,21 @@ end
 
 let tests =
   [
-    ("(type (int foo) (lambda (x : foo) x))",
-     OK ("(foo -> foo)"));
-    ("(type (foo int) (type (bar int) (lambda (x : foo) x : bar)))",
-     OK ("(foo -> bar)"));
-    ("(type (foo (forall (a) (a -> a))) (lambda (f : foo) (f 1)))",
-     OK ("(foo -> int)"));
-    ("(type (foo (forall (a) (a -> a))) (lambda (f : foo) ((f 1), (f true))))",
-     OK ("(foo -> (* int bool))"));
-    ("(type (foo int) (type
-                       (bar (forall (a) (a -> foo)))
-                       (lambda (f : bar) (f true))))"),
-     OK ("(bar -> foo)");
-    ("(type (a int)
-       (type (foo (lambda (a) (* a int)))
-        ((lambda (x : (foo a)) (fst x)) (5, 7))))",
+    ("(. (int foo) (\\ (x : foo) x))",
+     OK ("(foo > foo)"));
+    ("(. (foo int) (. (bar int) (\\ (x : foo) x : bar)))",
+     OK ("(foo > bar)"));
+    ("(. (foo (V (a) (a > a))) (\\ (f : foo) (f 1)))",
+     OK ("(foo > int)"));
+    ("(. (foo (V (a) (a > a))) (\\ (f : foo) (, (f 1) (f true))))",
+     OK ("(foo > (* int bool))"));
+    ("(. (foo int) (.
+                       (bar (V (a) (a > foo)))
+                       (\\ (f : bar) (f true))))"),
+     OK ("(bar > foo)");
+    ("(. (a int)
+       (. (foo (\\ (a) (* a int)))
+        ((\\ (x : (foo a)) (fst x)) (, 5 7))))",
      OK ("a"));
   ]
 

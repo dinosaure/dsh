@@ -72,7 +72,7 @@ let reduce (lst, stop) startpos endpos =
 %token LPAR RPAR LBRA RBRA LACC RACC
 
 %token COLON SEMICOLON PIPE COMMA EQUAL POINT BACKSLASH MARK DASH PLUS STAR
-%token PERCENT SLASH UPPER LOWER TILDE
+%token PERCENT SLASH UPPER LOWER TILDE DIFF EQUP EQLO
 
 %token REC FORALL SOME
 
@@ -106,7 +106,7 @@ ulist(C, X):
   { [ x ] }
 
 exprs:
-  | LPAR EQUAL  n = LNAME t = ty RPAR   r = exprs
+  | LPAR POINT  n = LNAME t = ty RPAR   r = exprs
   { Ast.Alias (Location.make $startpos $endpos, n, t, r) }
 
   | LPAR COLON  n = LNAME e = expr RPAR r = exprs
@@ -130,7 +130,7 @@ single_ty:
   { a }
 
 expr:
-  | LPAR EQUAL        LPAR n = LNAME t = ty RPAR    e = expr RPAR
+  | LPAR POINT        LPAR n = LNAME t = ty RPAR    e = expr RPAR
   { Ast.Alias (Location.make $startpos $endpos, n, t, e) }
   | LPAR COLON        LPAR n = LNAME e = expr RPAR  c = expr RPAR
   { Ast.Let (Location.make $startpos $endpos, n, e, c) }
@@ -158,27 +158,6 @@ expr_ann:
   { Ast.Ann (Location.make $startpos $endpos, a, n) }
 
 expr_infix:
-  | LBRA a = expr PLUS b = expr RBRA
-  { let op = Ast.Var (Location.make $startpos($3) $endpos($3), "+")
-    in Ast.App (Location.make $startpos $endpos, op, [a; b]) }
-  | LBRA a = expr DASH b = expr RBRA
-  { let op = Ast.Var (Location.make $startpos($3) $endpos($3), "-")
-    in Ast.App (Location.make $startpos $endpos, op, [a; b]) }
-  | LBRA a = expr STAR b = expr RBRA
-  { let op = Ast.Var (Location.make $startpos($3) $endpos($3), "*")
-    in Ast.App (Location.make $startpos $endpos, op, [a; b]) }
-  | LBRA a = expr SLASH b = expr RBRA
-  { let op = Ast.Var (Location.make $startpos($3) $endpos($3), "/")
-    in Ast.App (Location.make $startpos $endpos, op, [a; b]) }
-  | LBRA a = expr PERCENT b = expr RBRA
-  { let op = Ast.Var (Location.make $startpos($3) $endpos($3), "%")
-    in Ast.App (Location.make $startpos $endpos, op, [a; b]) }
-  | LBRA a = expr UPPER b = expr RBRA
-  { let op = Ast.Var (Location.make $startpos($3) $endpos($3), ">")
-    in Ast.App (Location.make $startpos $endpos, op, [a; b]) }
-  | LBRA a = expr LOWER b = expr RBRA
-  { let op = Ast.Var (Location.make $startpos($3) $endpos($3), "<")
-    in Ast.App (Location.make $startpos $endpos, op, [a; b]) }
   | LBRA a = expr o = expr b = expr RBRA
   { Ast.App (Location.make $startpos $endpos, o, [a; b]) }
 
@@ -191,27 +170,6 @@ expr_app:
   { Ast.App (Location.make $startpos $endpos, f, a) }
   | LPAR COMMA l = expr+ RPAR
   { Ast.Tuple (Location.make $startpos $endpos, l) }
-  | LPAR PLUS l = expr+ RPAR
-  { let op = Ast.Var (Location.make $startpos($2) $endpos($2), "+")
-    in Ast.App (Location.make $startpos $endpos, op, l) }
-  | LPAR DASH l = expr+ RPAR
-  { let op = Ast.Var (Location.make $startpos($2) $endpos($2), "-")
-    in Ast.App (Location.make $startpos $endpos, op, l) }
-  | LPAR STAR l = expr+ RPAR
-  { let op = Ast.Var (Location.make $startpos($2) $endpos($2), "*")
-    in Ast.App (Location.make $startpos $endpos, op, l) }
-  | LPAR SLASH l = expr+ RPAR
-  { let op = Ast.Var (Location.make $startpos($2) $endpos($2), "/")
-    in Ast.App (Location.make $startpos $endpos, op, l) }
-  | LPAR PERCENT l = expr+ RPAR
-  { let op = Ast.Var (Location.make $startpos($2) $endpos($2), "%")
-    in Ast.App (Location.make $startpos $endpos, op, l) }
-  | LPAR UPPER l = expr+ RPAR
-  { let op = Ast.Var (Location.make $startpos($2) $endpos($2), ">")
-    in Ast.App (Location.make $startpos $endpos, op, l) }
-  | LPAR LOWER l = expr+ RPAR
-  { let op = Ast.Var (Location.make $startpos($2) $endpos($2), "<")
-    in Ast.App (Location.make $startpos $endpos, op, l) }
 
 expr_atom:
   | i = NUMBER
@@ -229,6 +187,28 @@ expr_atom:
   { Ast.Var (Location.make $startpos $endpos, n) }
   | LPAR e = expr RPAR
   { e }
+  | PLUS
+  { Ast.Var (Location.make $startpos $endpos, "+") }
+  | DASH
+  { Ast.Var (Location.make $startpos $endpos, "-") }
+  | STAR
+  { Ast.Var (Location.make $startpos $endpos, "*") }
+  | SLASH
+  { Ast.Var (Location.make $startpos $endpos, "/") }
+  | PERCENT
+  { Ast.Var (Location.make $startpos $endpos, "%") }
+  | UPPER
+  { Ast.Var (Location.make $startpos $endpos, ">") }
+  | LOWER
+  { Ast.Var (Location.make $startpos $endpos, "<") }
+  | EQUAL
+  { Ast.Var (Location.make $startpos $endpos, "=") }
+  | DIFF
+  { Ast.Var (Location.make $startpos $endpos, "<>") }
+  | EQUP
+  { Ast.Var (Location.make $startpos $endpos, ">=") }
+  | EQLO
+  { Ast.Var (Location.make $startpos $endpos, "<=") }
 
 branch:
   | LPAR p = pattern e = expr RPAR
@@ -270,6 +250,8 @@ ty:
   { Type.Arrow c }
   | LPAR x = ty RPAR
   { x }
+  | LPAR STAR l = ty+ RPAR
+  { Type.App (Type.Const "*", l) }
   (*
   | LPAR l = ulist(PIPE, ty_variant) RPAR
   { Type.Set (Type.Set.of_list l) }
