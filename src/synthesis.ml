@@ -603,6 +603,16 @@ let rec eval
        let b' = eval ~gamma ~env ~level b in
        unification i' Type.bool;
        unification a' b';
+
+       (** In the case of a variant, conditional branching must bound the
+           variant like this:
+           > true ? A() | B()
+           [ A : unit, B : unit | _a ] to [ A : unit, B : unit ]
+
+           Both variants can be bounded only if their variables are the same
+           after the unification. Otherwise, there is a type error.
+       *)
+
        if Type.is_row_container a' && Type.is_row_container b'
        then let (ret, _) = Type.bound_container a' b' in ret
        else a')
