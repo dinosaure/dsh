@@ -27,7 +27,7 @@ Document "dsh"
 Executable dsh
   Path:                  bin
   MainIs:                dsh.ml
-  BuildDepends:          dsh, lambda-term
+  BuildDepends:          dsh, lwt.ppx, lambda-term
 
 ## Test ##
 
