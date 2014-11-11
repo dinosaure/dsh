@@ -12,9 +12,13 @@ type t =
   | Bool of (Location.t * bool)
   | Char of (Location.t * char)
   | Alias of (Location.t * string * Type.t * t)
-  | Variant of (Location.t * string * t)
   | Tuple of (Location.t * t list)
-  | Match of (Location.t * t * (Pattern.t * t) list)
+  | Case of (Location.t * t * (Pattern.t * t) list)
+  | Variant of (Location.t * string * t)
+  | RecordSelect of (Location.t * t * string)
+  | RecordExtend of (Location.t * t list Type.Set.t * t)
+  | RecordRestrict of (Location.t * t * string)
+  | RecordEmpty of Location.t
 and annotation = (int list * Type.t)
 
 val loc : t -> Location.t

@@ -12,9 +12,13 @@ type t =
   | Bool of (Location.t * bool)
   | Char of (Location.t * char)
   | Alias of (Location.t * string * Type.t * t)
-  | Variant of (Location.t * string * t)
   | Tuple of (Location.t * t list)
-  | Match of (Location.t * t * (Pattern.t * t) list)
+  | Case of (Location.t * t * (Pattern.t * t) list)
+  | Variant of (Location.t * string * t)
+  | RecordSelect of (Location.t * t * string)
+  | RecordExtend of (Location.t * t list Type.Set.t * t)
+  | RecordRestrict of (Location.t * t * string)
+  | RecordEmpty of Location.t
 and annotation = (int list * Type.t)
 
 module Buffer = struct
@@ -42,6 +46,9 @@ module Buffer = struct
     | Some ann ->
       Printf.bprintf buffer "%s : %a" name add_annotation ann
     | None -> add_string buffer name
+
+  let add_set ?(sep="") add_data buffer set =
+    add_list ~sep add_data buffer (Type.Set.bindings set)
 end
 
 module List = struct
@@ -68,9 +75,13 @@ let loc = function
   | Bool (loc, _) -> loc
   | Char (loc, _) -> loc
   | Alias (loc, _, _, _) -> loc
-  | Variant (loc, _, _) -> loc
   | Tuple (loc, _) -> loc
-  | Match (loc, _, _) -> loc
+  | Case (loc, _, _) -> loc
+  | Variant (loc, _, _) -> loc
+  | RecordSelect (loc, _, _) -> loc
+  | RecordExtend (loc, _, _) -> loc
+  | RecordRestrict (loc, _, _) -> loc
+  | RecordEmpty loc -> loc
 
 let rec is_annotated = function
   | Ann (_, _, _) -> true
@@ -82,20 +93,20 @@ let to_string tree =
   let rec compute buffer = function
     | Var (_, name) -> Buffer.add_string buffer name
     | App (_, f, a) ->
-      Printf.bprintf buffer "(%a %a)"
+      Printf.bprintf buffer "%a[%a]"
         compute f
         (Buffer.add_list ~sep:" " compute) a
     | Abs (_, a, c) ->
-      Printf.bprintf buffer "(\\ (%a) %a)"
+      Printf.bprintf buffer "λ%a.%a"
         (Buffer.add_list ~sep:" " Buffer.add_argument) a
         compute c
     | Let (_, name, e, c) ->
-      Printf.bprintf buffer "(: (%s %a) %a)"
+      Printf.bprintf buffer "%s = %a in %a"
         name
         compute e
         compute c
     | Rec (_, name, e, c) ->
-      Printf.bprintf buffer "(Y (%s %a) %a)"
+      Printf.bprintf buffer "Y(%s) = %a in %a)"
         name
         compute e
         compute c
@@ -104,12 +115,12 @@ let to_string tree =
         compute e
         Buffer.add_annotation ann
     | If (_, i, a, b) ->
-      Printf.bprintf buffer "(? %a %a %a)"
+      Printf.bprintf buffer "%a ? %a | %a"
         compute i
         compute a
         compute b
     | Seq (_, a, b) ->
-      Printf.bprintf buffer "[%a; %a]"
+      Printf.bprintf buffer "%a %a"
         compute a
         compute b
     | Int (_, i) ->
@@ -118,29 +129,53 @@ let to_string tree =
       Printf.bprintf buffer "%s" (if b then "true" else "false")
     | Char (_, c) ->
       Printf.bprintf buffer "%c" c
-    | Unit _ -> Buffer.add_string buffer "()"
+    | Unit _ -> Buffer.add_string buffer "ø"
     | Alias (_, name, ty, expr) ->
-      Printf.bprintf buffer "(= %s %s %a)"
-        name
-        (Type.to_string ty)
-        compute expr
+      raise (Failure "Not implemented")
     | Variant (_, ctor, Unit _) ->
-      Buffer.add_string buffer ctor
+      Printf.bprintf buffer "%s()" ctor
     | Variant (_, ctor, expr) ->
-      Printf.bprintf buffer "(~ %s %a)"
+      Printf.bprintf buffer "%s(%a)"
         ctor
         compute expr
     | Tuple (_, l) ->
-      Printf.bprintf buffer "(%a)"
-        (Buffer.add_list ~sep:", " compute) l
-    | Match (_, expr, l) ->
+      raise (Failure "Not implemented")
+    | Case (_, expr, l) ->
       let add_branch buffer (pattern, expr) =
-        Printf.bprintf buffer "(%s %a)"
+        Printf.bprintf buffer "%s → %a"
           (Pattern.to_string pattern)
           compute expr
       in
-      Printf.bprintf buffer "(| %a %a)"
+      Printf.bprintf buffer "match %a { %a }"
         compute expr
-        (Buffer.add_list ~sep:" " add_branch) l
+        (Buffer.add_list ~sep:" | " add_branch) l
+    | RecordSelect (_, r, n) ->
+      Printf.bprintf buffer "%a.%s" compute r n
+    | RecordExtend (_, map, rest) ->
+      let add_label label buffer expr =
+        Printf.bprintf buffer "%s = %a" label compute expr in
+      let add_map buffer map =
+        Printf.bprintf buffer "%a"
+          (Buffer.add_set ~sep:", "
+          (fun buffer (label, lst) ->
+            Printf.bprintf buffer "%a"
+              (Buffer.add_list ~sep:", " (add_label label))
+              lst))
+        map
+      in
+      begin
+        match rest with
+        | RecordEmpty _ ->
+          Printf.bprintf buffer "{ %a }" add_map map
+        | expr ->
+          Printf.bprintf buffer "{ %a | %a }"
+            add_map map
+            compute expr
+      end
+    | RecordRestrict (_, expr, label) ->
+      Printf.bprintf buffer "{ %a - %s }"
+        compute expr
+        label
+    | RecordEmpty _ -> Buffer.add_string buffer "{}"
 
   in compute buffer tree; Buffer.contents buffer
