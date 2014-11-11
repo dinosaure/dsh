@@ -1,8 +1,9 @@
 # OASIS_START
-# DO NOT EDIT (digest: 0274c85e06f6ff09886f3e0ff426b16c)
+# DO NOT EDIT (digest: 184e93520ec288391658f4d8cecb3507)
 # Ignore VCS directories, you can use the same kind of rule outside
 # OASIS_START/STOP if you want to exclude directories that contains
 # useless stuff for the build process
+true: annot, bin_annot
 <**/.svn>: -traverse
 <**/.svn>: not_hygienic
 ".bzr": -traverse
@@ -15,31 +16,37 @@
 "_darcs": not_hygienic
 # Library dsh
 "src/dsh.cmxs": use_dsh
-<src/*.ml{,i}>: pkg_batteries
+<src/*.ml{,i,y}>: pkg_batteries
+<src/*.ml{,i,y}>: pkg_menhirLib
+<src/*.ml{,i,y}>: pkg_sedlex
 # Executable dsh
 "bin/dsh.byte": pkg_batteries
+"bin/dsh.byte": pkg_lambda-term
+"bin/dsh.byte": pkg_menhirLib
+"bin/dsh.byte": pkg_sedlex
 "bin/dsh.byte": use_dsh
-<bin/*.ml{,i}>: pkg_batteries
-<bin/*.ml{,i}>: use_dsh
-# Executable test_parser
-<test/parser_test.{native,byte}>: pkg_batteries
-<test/parser_test.{native,byte}>: pkg_oUnit
-<test/parser_test.{native,byte}>: use_dsh
-# Executable test_lexer
-<test/lexer_test.{native,byte}>: pkg_batteries
-<test/lexer_test.{native,byte}>: pkg_oUnit
-<test/lexer_test.{native,byte}>: use_dsh
+<bin/*.ml{,i,y}>: pkg_batteries
+<bin/*.ml{,i,y}>: pkg_lambda-term
+<bin/*.ml{,i,y}>: pkg_menhirLib
+<bin/*.ml{,i,y}>: pkg_sedlex
+<bin/*.ml{,i,y}>: use_dsh
 # Executable test_type
 <test/type_test.{native,byte}>: pkg_batteries
+<test/type_test.{native,byte}>: pkg_menhirLib
 <test/type_test.{native,byte}>: pkg_oUnit
+<test/type_test.{native,byte}>: pkg_sedlex
 <test/type_test.{native,byte}>: use_dsh
 # Executable test_alias
 <test/alias_test.{native,byte}>: pkg_batteries
+<test/alias_test.{native,byte}>: pkg_menhirLib
 <test/alias_test.{native,byte}>: pkg_oUnit
+<test/alias_test.{native,byte}>: pkg_sedlex
 <test/alias_test.{native,byte}>: use_dsh
-<test/*.ml{,i}>: pkg_batteries
-<test/*.ml{,i}>: pkg_oUnit
-<test/*.ml{,i}>: use_dsh
+<test/*.ml{,i,y}>: pkg_batteries
+<test/*.ml{,i,y}>: pkg_menhirLib
+<test/*.ml{,i,y}>: pkg_oUnit
+<test/*.ml{,i,y}>: pkg_sedlex
+<test/*.ml{,i,y}>: use_dsh
 # OASIS_STOP
 
 true: use_menhir

@@ -10,9 +10,9 @@ AlphaFeatures:           ocamlbuild_more_args
 
 Library dsh
   Path:                  src
-  Modules:               Location, Lexer, Parser, Pattern, Ast, Type, Gamma,
-                         Synthesis, Core, Interpreter
-  BuildDepends:          batteries
+  Modules:               Location, Ulexer, Parser, Uparser, Pattern, Ast,
+                         Type, Gamma, Synthesis, Core, Interpreter
+  BuildDepends:          batteries, menhirLib, sedlex
 
 Document "dsh"
   Type:                  ocamlbuild (0.4)
@@ -27,37 +27,9 @@ Document "dsh"
 Executable dsh
   Path:                  bin
   MainIs:                dsh.ml
-  BuildDepends:          dsh
+  BuildDepends:          dsh, lambda-term
 
 ## Test ##
-
-Executable test_parser
-  Path:                  test
-  Build$:                flag(tests)
-  Install:               false
-  CompiledObject:        best
-  MainIs:                parser_test.ml
-  BuildDepends:          dsh, oUnit
-
-Test test_parser
-  Run$:                  flag(tests)
-  TestTools:             test_parser
-  Command:               $test_parser
-  WorkingDirectory:      .
-
-Executable test_lexer
-  Path:                  test
-  Build$:                flag(tests)
-  Install:               false
-  CompiledObject:        best
-  MainIs:                lexer_test.ml
-  BuildDepends:          dsh, oUnit
-
-Test test_lexer
-  Run$:                  flag(tests)
-  TestTools:             test_lexer
-  Command:               $test_lexer
-  WorkingDirectory:      .
 
 Executable test_type
   Path:                  test

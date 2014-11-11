@@ -1,8 +1,8 @@
 # OASIS_START
-# DO NOT EDIT (digest: 0017aabeddb834bcb2d77d7d78dbffe3)
+# DO NOT EDIT (digest: 9e34b812fd314bf7da8cff0a4e2fa3a0)
 version = "0.1"
 description = "Typed Scheme"
-requires = "batteries"
+requires = "batteries menhirLib sedlex"
 archive(byte) = "dsh.cma"
 archive(byte, plugin) = "dsh.cma"
 archive(native) = "dsh.cmxa"
