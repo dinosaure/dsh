@@ -97,7 +97,7 @@ let to_string tree =
         compute f
         (Buffer.add_list ~sep:" " compute) a
     | Abs (_, a, c) ->
-      Printf.bprintf buffer "λ%a.%a"
+      Printf.bprintf buffer "λ%a. %a"
         (Buffer.add_list ~sep:" " Buffer.add_argument) a
         compute c
     | Let (_, name, e, c) ->
