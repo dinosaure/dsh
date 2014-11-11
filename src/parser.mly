@@ -347,7 +347,7 @@ ty_record:
 ty_variant:
   | x = UNAME COLON ty = ty
   { [(x, ty)] }
-  | l = ty_record COMMA x = UNAME COLON ty = ty
+  | l = ty_variant COMMA x = UNAME COLON ty = ty
   { (x, ty) :: l }
 
 ty_arg:
