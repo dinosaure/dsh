@@ -603,8 +603,8 @@ let rec eval
        let b' = eval ~gamma ~env ~level b in
        unification i' Type.bool;
        unification a' b';
-       if Type.is_row a' && Type.is_row b'
-       then let (ret, _) = Type.bound a' b' in ret
+       if Type.is_row_container a' && Type.is_row_container b'
+       then let (ret, _) = Type.bound_container a' b' in ret
        else a')
     >!= raise_with_loc loc
   | Ast.Seq (loc, a, b) ->

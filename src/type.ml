@@ -139,9 +139,12 @@ let rec is_row = function
   | Var { contents = Link t } -> is_row t
   | Var _ -> true
   | RowEmpty -> true
+  | _ -> false
+
+let rec is_row_container = function
   | Variant row -> assert (is_row row = true); true
   | Record row -> assert (is_row row = true); true
-  | ty -> false
+  | _ -> false
 
 let rec is_monomorphic = function
   | Forall _ -> false
@@ -248,7 +251,7 @@ let to_string ?(env = Environment.empty) ty =
   let buffer = Buffer.create 16 in
   expr env buffer ty; Buffer.contents buffer
 
-let rec bound row1 row2 =
+let rec bound_container ty1 ty2 =
   let aux row1 row2 = match compact row1, compact row2 with
     | (map1, Var ({ contents = Unbound _ } as var1)),
       (map2, Var ({ contents = Unbound _ } as var2)) when var1 == var2 ->
@@ -257,7 +260,7 @@ let rec bound row1 row2 =
     | (map1, rest1), (map2, rest2) ->
       RowExtend (map1, rest1), RowExtend (map2, rest2)
   in
-  match row1, row2 with
+  match ty1, ty2 with
   | Variant row1, Variant row2 ->
     let row1', row2' = aux row1 row2 in
     Variant row1', Variant row2'
