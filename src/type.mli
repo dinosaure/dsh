@@ -24,7 +24,7 @@ type t =
   | Var of var ref                        (* variable of type *)
   | Forall of (int list * t)              (* like `(forall (l) t)` *)
   | Alias of (string * t)                 (* alias of type *)
-  | Set of row                            (* like `[ A | B ]` *)
+  | Variant of row                        (* like `[ A | B ]` *)
   | Record of row                         (* like `{ a; b }` *)
   | RowEmpty
   | RowExtend of ((t list) Set.t * row)
@@ -49,7 +49,7 @@ val int : t
 val char : t
 val bool : t
 val unit : t
-val tuple : t
+val tuple : t list -> t
 
 val compact : row -> row list Set.t * row
 val unlink : t -> t

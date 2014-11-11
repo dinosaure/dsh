@@ -48,16 +48,16 @@ end
 
 type t =
   | Const of string                       (* like `int` *)
-  | App of (t * t list)                   (* like `(list int)` *)
-  | Arrow of (t list * t)                 (* like `int -> int` *)
+  | App of (t * t list)                   (* like `list[int]` *)
+  | Arrow of (t list * t)                 (* like `int → int` *)
   | Var of var ref                        (* variable of type *)
-  | Forall of (int list * t)              (* like `(forall (l) t)` *)
+  | Forall of (int list * t)              (* like `∀l.t` *)
   | Alias of (string * t)                 (* alias of type *)
-  | Set of row                            (* like `[ A | B ]` *)
+  | Variant of row                        (* like `[ A | B ]` *)
   | Record of row                         (* like `{ a; b }` *)
-  | RowEmpty
+  | RowEmpty                              (* {} *)
   | RowExtend of ((t list) Set.t * row)
-  | Abs of (string list * t)
+  | Abs of (string list * t)              (* like `λl.t` *)
 and var =
   | Unbound of int * int
   | Bound of int
@@ -84,7 +84,7 @@ let int = Const "int"
 let char = Const "char"
 let bool = Const "bool"
 let unit = Const "unit"
-let tuple = Const "*"
+let tuple l = App (Const "tuple", l)
 
 module Buffer = struct
   include Buffer
@@ -131,7 +131,7 @@ let rec unlink = function
   | Var ({ contents = Link ty } as var) ->
     let ty = unlink ty in
     var := Link ty; ty
-  | Alias (_, ty) -> unlink ty
+  | Alias (_, ty) -> unlink ty (* an Alias is a link to a type *)
   | ty -> ty
 
 let rec is_monomorphic = function
@@ -145,7 +145,7 @@ let rec is_monomorphic = function
     List.for_all is_monomorphic a && is_monomorphic r
   | Alias (_, t) -> is_monomorphic t
   | Abs _ -> false
-  | Set t -> is_monomorphic t
+  | Variant t -> is_monomorphic t
   | Record t -> is_monomorphic t
   | RowEmpty -> false
   | RowExtend (map, rest) ->
@@ -171,24 +171,19 @@ let to_string ?(env = Environment.empty) ty =
                    if i >= 26 then string_of_int (i / 26) else ""
         in "_" ^ name)
   in
-  let rec atom ?(first = false) env buffer = function
+  let rec atom env buffer = function
     | Const name ->
       Buffer.add_string buffer name
     | Alias (name, ty) ->
       Buffer.add_string buffer name
     | App (f, a) ->
-      Printf.bprintf buffer "(%a %a)"
-        (atom ~first env) f
-        (Buffer.add_list ~sep:" " (expr ~first env)) a
-    | Forall (ids, ty) ->
-      let lst, env = Environment.extend env ids in
-      Printf.bprintf buffer "(V (%a) %a)"
-        (Buffer.add_list ~sep:" " Buffer.add_string) lst
-        (expr ~first:true env) ty
+      Printf.bprintf buffer "%a[%a]"
+        (atom env) f
+        (Buffer.add_list ~sep:", " (expr env)) a
     | Abs (ids, ty) ->
-      Printf.bprintf buffer "(\\ (%a) %a)"
+      Printf.bprintf buffer "λ%a.%a"
         (Buffer.add_list ~sep:" " Buffer.add_string) ids
-        (expr ~first:true env) ty
+        (expr env) ty
     | Var { contents = Unbound (id, _) } ->
       Printf.bprintf buffer "%s" (name_of_unbound id)
     | Var { contents = Bound id } ->
@@ -198,16 +193,16 @@ let to_string ?(env = Environment.empty) ty =
       end
     | Var { contents = Generic id } ->
       Printf.bprintf buffer "%s" (name_of_unbound id)
-    | Var { contents = Link ty } -> atom ~first env buffer ty
+    | Var { contents = Link ty } -> atom env buffer ty
     | Record t ->
-      Printf.bprintf buffer "{%a}" (atom env) t
-    | Set t ->
-      Printf.bprintf buffer "[%a]" (atom env) t
+      Printf.bprintf buffer "{%a}" (expr env) t
+    | Variant t ->
+      Printf.bprintf buffer "[%a]" (expr env) t
     | RowEmpty -> ()
     | RowExtend _ as t ->
       let (map, rest) = compact t in
       let add_label label buffer ty =
-        Printf.bprintf buffer "%s : %a" label (atom env) ty in
+        Printf.bprintf buffer "%s : %a" label (expr env) ty in
       let add_map buffer map =
         Printf.bprintf buffer "%a"
           (Buffer.add_set ~sep:", "
@@ -219,27 +214,30 @@ let to_string ?(env = Environment.empty) ty =
       in
       begin
         match unlink rest with
-        | RowEmpty -> ()
+        | RowEmpty -> add_map buffer map
         | RowExtend _ -> assert false
         | ty ->
           Printf.bprintf buffer "%a | %a"
             add_map map
-            (atom env) ty
+            (expr env) ty
       end
     | ty -> Printf.bprintf buffer "(%a)" (expr env) ty
-  and expr ?(first = false) env buffer = function
+  and expr env buffer = function
     | Arrow (a, r) ->
       let func = if List.length a = 0 then expr env else atom env in
-      Printf.bprintf buffer "%s%a > %a%s"
-        (if first then "(" else "")
-        (Buffer.add_list ~sep:" > " func) a
-        (expr env) r
-        (if first then ")" else "")
-    | Var { contents = Link ty } -> expr ~first env buffer ty
-    | ty -> atom ~first env buffer ty
+      Printf.bprintf buffer "%a → %a"
+        (Buffer.add_list ~sep:" → " func) a
+        (atom env) r
+    | Forall (ids, ty) ->
+      let lst, env = Environment.extend env ids in
+      Printf.bprintf buffer "∀%a.%a"
+        (Buffer.add_list ~sep:" " Buffer.add_string) lst
+        (expr env) ty
+    | Var { contents = Link ty } -> expr env buffer ty
+    | ty -> atom env buffer ty
   in
   let buffer = Buffer.create 16 in
-  expr ~first:true env buffer ty; Buffer.contents buffer
+  expr env buffer ty; Buffer.contents buffer
 
 let rec copy = function
   | Const name -> Const name
@@ -253,7 +251,7 @@ let rec copy = function
   | RowEmpty -> RowEmpty
   | RowExtend (map, rest) ->
     RowExtend (Set.map (List.map copy) map, copy rest)
-  | Set t -> Set (copy t)
+  | Variant t -> Variant (copy t)
   | Record t -> Record (copy t)
 
 module S = BatSet.Make(String)
@@ -280,7 +278,7 @@ let free ty =
         (Set.map (fun l -> List.fold_left S.union S.empty (List.map aux l)) map)
         S.empty
       |> S.union (aux rest)
-    | Set t -> aux t
+    | Variant t -> aux t
     | Record t -> aux t
   in aux ty
 
@@ -320,7 +318,7 @@ let rec substitute name ty ty' =
   | RowExtend (map, rest) ->
     RowExtend (Set.map (List.map (substitute name ty)) map,
                substitute name ty rest)
-  | Set ty' -> substitute name ty ty'
+  | Variant ty' -> substitute name ty ty'
   | Record ty' -> substitute name ty ty'
   | ty -> ty
 
@@ -349,7 +347,7 @@ let rec reduction = function
   | App (ty, args) when is_abstraction ty ->
     begin
       unlink ty |> function Abs (ids, ty) ->
-        (** TODO: lost Alias (bug of pretty-print) and is not exhaustive
+        (** TODO: lost Alias (bug in pretty-print) and is not exhaustive
                   pattern-matching *)
         begin
           try let lst = List.combine ids args in
@@ -378,7 +376,7 @@ let normalize t =
       | Alias (s, t) -> Alias (s, step t)
       | RowExtend (map, rest) ->
         RowExtend (Set.map (List.map step) map, step rest)
-      | Set t -> Set (step t)
+      | Variant t -> Variant (step t)
       | Record t -> Record (step t)
       | t -> t
   in
