@@ -80,3 +80,61 @@ let runtime =
   let raise_error name = raise (Invalid_argument name) in
   let open Interpreter in
   Environment.empty
+  |> add "id"     (function [x] -> x | _ -> raise_error "id")
+  |> add "choose" (function [x; y] -> if Random.bool () then x else y
+                          | _ -> raise_error "choose")
+  |> add "apply"
+    (function [Closure (ext, [ name ], body, None); a] ->
+                Interpreter.eval
+                  (Interpreter.Environment.add name a ext) body
+            | [(Closure (ext, [ name ], body, Some fix)) as closure; a] ->
+                Interpreter.eval
+                  (Interpreter.Environment.extend ext [fix; name] [closure; a])
+                  body
+            | _ -> raise_error "apply")
+  |> add "const" (function [a; b] -> a | _ -> raise_error "const")
+
+  |> add "succ"   (function [Int n] -> Int (n + 1) | _ -> raise_error "succ")
+  |> add "pred"   (function [Int n] -> Int (n - 1) | _ -> raise_error "pred")
+  |> add "+"      (function [Int a; Int b] -> Int (a + b)
+                          | _ -> raise_error "+")
+  |> add "-"      (function [Int a; Int b] -> Int (a - b)
+                          | _ -> raise_error "-")
+  |> add "*"      (function [Int a; Int b] -> Int (a * b)
+                          | _ -> raise_error "*")
+  |> add "/"      (function [Int a; Int b] -> Int (a / b)
+                          | _ -> raise_error "/")
+  |> add "%"      (function [Int a; Int b] -> Int (a mod b)
+                          | _ -> raise_error "%")
+
+  |> add "equal"  (function [a; b] -> Bool (a = b)
+                          | _ -> raise_error "equal")
+  |> add "<>"     (function [a; b] -> Bool (a <> b)
+                          | _ -> raise_error "<>")
+  |> add ">"      (function [Int a; Int b] -> Bool (a > b)
+                           | _ -> raise_error ">")
+  |> add "<"      (function [Int a; Int b] -> Bool (a < b)
+                           | _ -> raise_error "<")
+  |> add ">="     (function [Int a; Int b] -> Bool (a >= b)
+                          | _ -> raise_error ">=")
+  |> add "<="     (function [Int a; Int b] -> Bool (a <= b)
+                          | _ -> raise_error "<=")
+  |> add "not"    (function [Bool a] -> Bool (not a)
+                          | _ -> raise_error "not")
+  |> add "and"    (function [Bool a; Bool b] -> Bool (a && a)
+                          | _ -> raise_error "and")
+  |> add "or"     (function [Bool a; Bool b] -> Bool (a || a)
+                          | _ -> raise_error "or")
+
+  |> add "fst"    (function [Tuple [a; _]] -> a
+                          | _ -> raise_error "fst")
+  |> add "snd"    (function [Tuple [_; b]] -> b
+                          | _ -> raise_error "snd")
+
+  |> add "num"    (function [Int a] -> print_int a; Unit
+                          | _ -> raise_error "num")
+  |> add "bln"    (function [Bool a] ->
+                            print_string (if a then "true" else "false"); Unit
+                          | _ -> raise_error "bln")
+  |> add "chr"    (function [Char a] -> print_string (String.make 1 a); Unit
+                          | _ -> raise_error "chr")
