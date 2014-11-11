@@ -181,7 +181,7 @@ let to_string ?(env = Environment.empty) ty =
         (atom env) f
         (Buffer.add_list ~sep:", " (expr env)) a
     | Abs (ids, ty) ->
-      Printf.bprintf buffer "λ%a.%a"
+      Printf.bprintf buffer "λ%a. %a"
         (Buffer.add_list ~sep:" " Buffer.add_string) ids
         (expr env) ty
     | Var { contents = Unbound (id, _) } ->
@@ -230,7 +230,7 @@ let to_string ?(env = Environment.empty) ty =
         (atom env) r
     | Forall (ids, ty) ->
       let lst, env = Environment.extend env ids in
-      Printf.bprintf buffer "∀%a.%a"
+      Printf.bprintf buffer "∀%a. %a"
         (Buffer.add_list ~sep:" " Buffer.add_string) lst
         (expr env) ty
     | Var { contents = Link ty } -> expr env buffer ty
