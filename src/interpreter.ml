@@ -35,12 +35,14 @@ let rec to_string = function
   | Char c -> String.make 1 c
   | Tuple l ->
     Printf.sprintf "(%s)" (String.of_list ~sep:", " to_string l)
-  | Unit -> "()"
+  | Unit -> "ø"
   | Closure _ -> "#closure"
   | Primitive _ -> "#primitive"
-  | Variant (ctor, Unit) -> ctor
+  | Variant (ctor, Unit) -> ctor ^ "()"
+  | Variant (ctor, Tuple l) ->
+    Printf.sprintf "%s(%s)" ctor (String.of_list ~sep:", " to_string l)
   | Variant (ctor, expr) ->
-    Printf.sprintf "(%s %a)" ctor (fun () -> to_string) expr
+    Printf.sprintf "%s(%a)" ctor (fun () -> to_string) expr
 
 exception Unbound_variable of string
 exception Expected_function
@@ -145,7 +147,7 @@ let rec eval env = function
   | Ast.Alias (_, _, _, expr) -> eval env expr
   | Ast.Variant (_, ctor, expr) -> Variant (ctor, eval env expr)
   | Ast.Tuple (_, l) -> Tuple (List.map (eval env) l)
-  | Ast.Match (loc, expr, patterns) ->
+  | Ast.Case (loc, expr, patterns) ->
     (fun () ->
       let value = eval env expr in
       let rec compute_branch = function
