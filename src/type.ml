@@ -134,6 +134,15 @@ let rec unlink = function
   | Alias (_, ty) -> unlink ty (* an Alias is a link to a type *)
   | ty -> ty
 
+let rec is_row = function
+  | RowExtend (_, _) -> true
+  | Var { contents = Link t } -> is_row t
+  | Var _ -> true
+  | RowEmpty -> true
+  | Variant row -> assert (is_row row = true); true
+  | Record row -> assert (is_row row = true); true
+  | ty -> false
+
 let rec is_monomorphic = function
   | Forall _ -> false
   | Const _ -> true
@@ -238,6 +247,24 @@ let to_string ?(env = Environment.empty) ty =
   in
   let buffer = Buffer.create 16 in
   expr env buffer ty; Buffer.contents buffer
+
+let rec bound row1 row2 =
+  let aux row1 row2 = match compact row1, compact row2 with
+    | (map1, Var ({ contents = Unbound _ } as var1)),
+      (map2, Var ({ contents = Unbound _ } as var2)) when var1 == var2 ->
+      (* break link to bound variant *)
+      RowExtend (map1, RowEmpty), RowExtend (map2, RowEmpty)
+    | (map1, rest1), (map2, rest2) ->
+      RowExtend (map1, rest1), RowExtend (map2, rest2)
+  in
+  match row1, row2 with
+  | Variant row1, Variant row2 ->
+    let row1', row2' = aux row1 row2 in
+    Variant row1', Variant row2'
+  | Record row1, Record row2 ->
+    let row1', row2' = aux row1 row2 in
+    Record row1', Record row2'
+  | ty1, ty2 -> raise (Invalid_argument "Type.bound")
 
 let rec copy = function
   | Const name -> Const name

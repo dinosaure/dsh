@@ -52,8 +52,10 @@ val unit : t
 val tuple : t list -> t
 
 val compact : row -> row list Set.t * row
+val bound : row -> row -> row * row
 val unlink : t -> t
 val is_monomorphic : t -> bool
+val is_row : t -> bool
 
 val to_string : ?env:string Environment.t -> t -> string
 val copy : t -> t
