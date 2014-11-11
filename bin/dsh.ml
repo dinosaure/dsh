@@ -1,5 +1,7 @@
 open CamomileLibraryDyn.Camomile
 
+let () = Random.self_init ()
+
 let interpret expr =
   let lexbuf = Sedlexing.Utf8.from_string expr in
   let token, start, stop = Ulexer.parse () in
