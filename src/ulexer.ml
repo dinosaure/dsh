@@ -73,19 +73,10 @@ let rec token ~pos lexbuf =
     | '.' -> Uparser.POINT
 
     | 0x2192 -> Uparser.ARROW      (* → *)
-    | "->" -> Uparser.ARROW
-
     | 0x2203 -> Uparser.SOME       (* ∃ *)
-    | 'E' -> Uparser.SOME
-
     | 0x2200 -> Uparser.FORALL     (* ∀ *)
-    | 'V' -> Uparser.FORALL
-
     | 0x03bb -> Uparser.LAMBDA     (* λ *)
-    | 'A' -> Uparser.LAMBDA
-
     | 0x00f8 -> Uparser.NULL       (* ø *)
-    | 'O' -> Uparser.NULL
 
     | 'Y' -> Uparser.REC
     | "in" -> Uparser.IN
