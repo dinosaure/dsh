@@ -1,26 +1,30 @@
 let interpret expr =
-  let lexbuf = Lexing.from_string expr in
+  let lexbuf = Sedlexing.Utf8.from_string expr in
+  let token, start, stop = Ulexer.parse () in
   try
-    let tree = Parser.single_expr Lexer.token lexbuf in
+    let tree = Uparser.single_expr token lexbuf in
     let ty = Synthesis.eval ~env:Core.core tree in
-    let rt = Interpreter.eval Core.runtime tree in
-    Printf.printf "%s : %s\n%!" (Interpreter.to_string rt) (Type.to_string ty);
+    (* let rt = Interpreter.eval Core.runtime tree in *)
+    Printf.printf "%s : %s\n%!" expr (Type.to_string ty);
   with
-  | Parser.Error ->
+  | Uparser.Error ->
     let loc = Location.make
-        (Lexing.lexeme_start_p lexbuf)
-        (Lexing.lexeme_end_p lexbuf)
+        (start lexbuf)
+        (stop lexbuf)
     in Printf.printf "Parsing error at:\n%s\n%!"
       (Location.to_string_of_line loc expr)
-  | Lexer.Lexical_error ->
+  | Ulexer.Lexical_error ->
     let loc = Location.make
-        (Lexing.lexeme_start_p lexbuf)
-        (Lexing.lexeme_end_p lexbuf)
+        (start lexbuf)
+        (stop lexbuf)
     in Printf.printf "Lexical error at:\n%s%!"
       (Location.to_string_of_line loc expr)
-  | Synthesis.Error (loc, _)
+  | Synthesis.Error (loc, _) as exn ->
+    Printf.printf "Typing error: %s at:\n%s%!"
+      (Printexc.to_string exn)
+      (Location.to_string_of_line loc expr)
   | Interpreter.Error (loc, _) as exn ->
-    Printf.printf "%s at:\n%s%!"
+    Printf.printf "Interpreter error: %s at:\n%s%!"
       (Printexc.to_string exn)
       (Location.to_string_of_line loc expr)
 
@@ -32,32 +36,37 @@ let rec repl () =
   end
 
 let rec file inch filename =
-  let lexbuf = Lexing.from_channel inch in
+  let lexbuf = Sedlexing.Utf8.from_channel inch in
+  let token, start, stop = Ulexer.parse () in
   try
-    let tree = Parser.exprs Lexer.token lexbuf in
+    let tree = Uparser.exprs token lexbuf in
     let _ = Synthesis.eval ~env:Core.core tree in
-    let _ = Interpreter.eval Core.runtime tree in
+    (* let _ = Interpreter.eval Core.runtime tree in *)
     ()
   with
-  | Parser.Error ->
+  | Uparser.Error ->
     let loc = Location.make
-        (Lexing.lexeme_start_p lexbuf)
-        (Lexing.lexeme_end_p lexbuf)
+        (start lexbuf)
+        (stop lexbuf)
     in
     Printf.printf "Parsing error at %s:\n> %s\n%!"
       (Location.to_string loc)
       (Location.to_string_of_file loc filename)
-  | Lexer.Lexical_error ->
+  | Ulexer.Lexical_error ->
     let loc = Location.make
-        (Lexing.lexeme_start_p lexbuf)
-        (Lexing.lexeme_end_p lexbuf)
+        (start lexbuf)
+        (stop lexbuf)
     in
     Printf.printf "Lexical error at %s:\n> %s\n%!"
       (Location.to_string loc)
       (Location.to_string_of_file loc filename)
-  | Synthesis.Error (loc, _)
+  | Synthesis.Error (loc, _) as exn ->
+    Printf.printf "Typing error: %s at %s:\n> %s\n%!"
+      (Printexc.to_string exn)
+      (Location.to_string loc)
+      (Location.to_string_of_file loc filename)
   | Interpreter.Error (loc, _) as exn ->
-    Printf.printf "%s at %s:\n> %s\n%!"
+    Printf.printf "Interpreter error: %s at %s:\n> %s\n%!"
       (Printexc.to_string exn)
       (Location.to_string loc)
       (Location.to_string_of_file loc filename)
