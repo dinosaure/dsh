@@ -93,7 +93,7 @@ let compute_variable id level ty =
     | Type.Alias (_, ty) -> aux ty
     | Type.RowExtend (map, rest) ->
       Type.Set.iter (fun _ -> List.iter aux) map; aux rest
-    | Type.Set row -> aux row
+    | Type.Variant row -> aux row
     | Type.Record row -> aux row
   in aux ty
 
@@ -136,7 +136,7 @@ let substitution ids tys ty =
     | Type.Abs (ids, ty) ->
       Type.Abs (ids, ty)
     | Type.Alias (name, ty) -> Type.Alias (name, aux map ty)
-    | Type.Set row -> Type.Set (aux map row)
+    | Type.Variant row -> Type.Variant (aux map row)
     | Type.Record row -> Type.Record (aux map row)
     | Type.RowEmpty as ty -> ty
     | Type.RowExtend (set, rest) ->
@@ -167,7 +167,7 @@ let catch_generic_variable ty =
     | Type.Abs (_, ty) -> aux ty
     | Type.Alias (_, ty) -> aux ty
     | Type.Record row -> aux row
-    | Type.Set row -> aux row
+    | Type.Variant row -> aux row
     | Type.RowEmpty -> ()
     | Type.RowExtend (map, rest) ->
       Type.Set.iter (fun _ -> List.iter aux) map; aux rest
@@ -221,7 +221,7 @@ let rec expand ~gamma ty =
     | Type.Abs (lst, ty) ->
       Type.Abs (lst, aux ty)
     | Type.Record row -> Type.Record (aux row)
-    | Type.Set row -> Type.Set (aux row)
+    | Type.Variant row -> Type.Variant (aux row)
     | Type.RowExtend (map, rest) ->
       Type.RowExtend (Type.Set.map (List.map aux) map, aux rest)
     | ty -> ty
@@ -287,8 +287,8 @@ let rec unification t1 t2 =
 
         If unification success, we check that none of the `Generic` type
         variables escapes, otherwise, we would successfilly unify types
-        `(forall (a) (a -> a))` and `(forall (a) (a -> b))`, where `b` is a
-        unifiable `Unbound` type variable.
+        `∀a. a → a` and `∀a b. a → b`, where `b` is a unifiable `Unbound` type
+        variable.
     *)
     | (Type.Forall (ids1, ty1) as forall1),
       (Type.Forall (ids2, ty2) as forall2) ->
@@ -305,7 +305,7 @@ let rec unification t1 t2 =
       then raise (Conflict (forall1, forall2))
 
     | Type.Record row1, Type.Record row2 -> unification row1 row2
-    | Type.Set row1, Type.Set row2 -> unification row1 row2
+    | Type.Variant row1, Type.Variant row2 -> unification row1 row2
     | Type.RowEmpty, Type.RowEmpty -> ()
     | (Type.RowExtend _ as row1), (Type.RowExtend _ as row2) ->
       unification_rows row1 row2
@@ -427,7 +427,7 @@ let generalization level ty =
     | Type.Const _ -> ()
     | Type.Alias (_, ty) -> aux ty
     | Type.Abs (_, ty) -> aux ty
-    | Type.Set row -> aux row
+    | Type.Variant row -> aux row
     | Type.Record row -> aux row
     | Type.RowEmpty -> ()
     | Type.RowExtend (map, rest) ->
@@ -456,17 +456,16 @@ let rec compute_function n = function
   | _ as ty -> raise (Expected_function ty)
 
 (** subsume : takes two types [ty1] [ty2] and determines if [ty1] is an of
-    [ty2]. For example, `(int -> int)` is an instance of
-    `(forall (a) (a -> a))` (the type of `id`) which in turn is an instance
-    of `(foralle (a b) (a -> b))` (type of `magic`). This means that we can
-    pass `id` as an argument to a function expecting `(int -> int)` and we can
-    pass `magic` to a function expecing `(forall (a) (a -> a))` but not the
-    other way round. To determine if [ty1] is an instance of [ty2], [subsume]
-    first instantiates [ty2], the more general type, with `Unbound` type
-    varibales. If [ty1] is not polymorphic, is simply unifies the two types.
-    Otherwise, it instantiates [ty1] with `Generic` type variables and uunifies
-    both instantiated types. If unification success, we check that no generic
-    variables escapes (see [union]).
+    [ty2]. For example, `int → int` is an instance of `∀a. a → a` (the type of
+    `id`) which in turn is an instance of `∀a b. a → b` (type of `magic`). This
+    means that we can pass `id` as an argument to a function expecting
+    `int → int` and we can pass `magic` to a function expecing `∀a. a → a` but
+    not the other way round. To determine if [ty1] is an instance of [ty2],
+    [subsume] first instantiates [ty2], the more general type, with `Unbound`
+    type varibales. If [ty1] is not polymorphic, is simply unifies the two
+    types. Otherwise, it instantiates [ty1] with `Generic` type variables and
+    unifies both instantiated types. If unification success, we check that no
+    generic variables escapes (see [union]).
 
     @param level level for make specializationon [ty2]
     @param ty1
@@ -585,7 +584,7 @@ let rec eval
   | Ast.Ann (loc, e, (lst, ty)) ->
 
     (** Infering type annotation `expr : type` is equivalent to inferring the
-        type of function call `((lambda (x : type) x) expr)`, but optimized in
+        type of function call `(λ x : type .x)[expr]`, but optimized in
         this implementation of [eval].
     *)
     (fun () ->
@@ -608,17 +607,17 @@ let rec eval
     >!= raise_with_loc loc
   | Ast.Seq (loc, a, b) ->
     (fun () ->
-       let a' = eval ~gamma ~env ~level a in
-       let b' = eval ~gamma ~env ~level b in
-       unification a' Type.unit;
-       b')
+       let _ = eval ~gamma ~env ~level a in
+       let ty = eval ~gamma ~env ~level b in
+       unification ty Type.unit;
+       ty)
     >!= raise_with_loc loc
   | Ast.Int _ -> Type.int
   | Ast.Bool _ -> Type.bool
   | Ast.Char _ -> Type.char
   | Ast.Unit _ -> Type.unit
   | Ast.Tuple (_, l) ->
-    Type.App (Type.tuple, List.map (eval ~gamma ~env ~level) l)
+    Type.tuple (List.map (eval ~gamma ~env ~level) l)
 
   | Ast.Variant (loc, ctor, expr) ->
     (fun () ->
@@ -626,13 +625,14 @@ let rec eval
       let ctor' = Type.Variable.make level in
       let ptr' = ctor' in
       let result' =
-        Type.Set (Type.RowExtend (Type.Set.singleton ctor [ctor'], rest')) in
+        Type.Variant
+          (Type.RowExtend (Type.Set.singleton ctor [ctor'], rest')) in
       let expr' = (eval ~gamma ~env ~level expr) in
       unification ptr' expr';
       result')
     >!= raise_with_loc loc
 
-  | Ast.Match (loc, expr, patterns) ->
+  | Ast.Case (loc, expr, patterns) ->
     (fun () ->
       let ty = eval ~gamma ~env ~level expr in
       let rt = Type.Variable.make (level + 1) in
@@ -653,9 +653,9 @@ let rec eval
     When calling functions with multiple arguments, we must first [subsume] the
     types of arguments for those parameters that are type variables, otherwise
     we would fail to typecheck applications such as `(revapply id poly), where
-    `revapply : (forall (a b) (a -> (a -> b) -> b))`,
-    `poly : ((forall (a) (a -> a ->)) -> (\* int bool))` and
-    `id` : (forall (a) (a -> a)).
+    `revapply : ∀a b. a → (a → b) → b`,
+    `poly : (∀a. a → a) → tuple[int, bool]` and
+    `id` : ∀a. a → a.
 
     @param gamma all definitions
     @param env environment
@@ -697,8 +697,9 @@ and compute_pattern gamma env level = function
           let (ty, new_env) = compute_pattern gamma env level x in
           (ty :: tys, new_env))
         ([], env) l
-    in (Type.App (Type.tuple, List.rev tys), new_env)
+    in (Type.tuple (List.rev tys), new_env)
   | Pattern.Variant (_, ctor, expr) ->
     let (expr', env') = compute_pattern gamma env level expr in
     let rest' = Type.Variable.make level in
-    (Type.Set (Type.RowExtend (Type.Set.singleton ctor [expr'], rest')), env')
+    (Type.Variant (Type.RowExtend (Type.Set.singleton ctor [expr'], rest')),
+     env')
