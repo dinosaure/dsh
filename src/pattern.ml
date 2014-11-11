@@ -23,19 +23,19 @@ let to_string a =
   let buffer = Buffer.create 16 in
   let rec compute buffer = function
     | Var (_, name) -> Buffer.add_string buffer name
-    | Variant (_, name, Unit _) -> Buffer.add_string buffer name
+    | Variant (_, name, Unit _) ->
+      Printf.bprintf buffer "%s()" name
     | Variant (_, name, expr) ->
-      Printf.bprintf buffer "(%s %a)"
+      Printf.bprintf buffer "%s(%a)"
         name
         compute expr
     | Tuple (_, l) ->
-      Printf.bprintf buffer "(%a)"
-        (Buffer.add_list ~sep:", " compute) l
+      raise (Failure "Not implemented")
     | Int (_, i) ->
       Printf.bprintf buffer "%d" i
     | Char (_, c) ->
       Printf.bprintf buffer "%c" c
     | Bool (_, b) ->
       Printf.bprintf buffer "%b" b
-    | Unit _ -> Buffer.add_string buffer "()"
+    | Unit _ -> Buffer.add_string buffer "ø"
   in compute buffer a; Buffer.contents buffer
