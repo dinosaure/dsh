@@ -1,0 +1,30 @@
+id = ( λx.x ) : ∀a. a → a
+id[ø]
+id[5]
+
+cc = (λx. y = λz.z in y) : ∀a b. a → (b → b)
+cc[ø][5]
+
+eq = λx. (f = λx.x in id = λy.y in equal[f, id]) : bool
+eq = λx. (f = λa b. true in equal[f, equal]) : bool
+eq = λx. (f = λx.x in equal[f, succ]) : bool
+
+dm = (x = id in y = z = x[id] in z in y) : ∀a. a → a
+dm = (λx y. x = x[y] in x[y]) : ∀a b. (a → (a → b)) → a → b
+dm = (λx. λy. x = x[y] in x[y]) : ∀a b. (a → (a → b)) → (a → b)
+dm = (λx. y = λz. x[z] in y) : ∀a b. (a → b) → (a → b)
+dm = (λx. y = λz. x in y) : ∀a b. a → (b → a)
+dm = (λx. λy. x = x[y] in λx. y[x])
+     : ∀a b c. ((a → b) → c) → ((a → b) → (a → b))
+dm = (λx. y = λz. z in y[y])
+dm = (λf : ∀a. a → a. (f[true], f[1])) : (∀a. (a → a)) → tuple[bool, int]
+dm = (λx. λy. z = choose[x, y] in z)[id : ∀a. a → a] : (∀a. a → a) → (∀a. a → a)
+dm = (λx : ∀a. a → a. x) : ∀a. (∀b. b → b) → (a → a)
+
+(id : ∀a. a → a) : int → int
+const = (λx y. x ) : ∀a b. a → b → a
+apply = (λf x. f[x]) : ∀a b. (a → b) → a → b
+
+lst = choose[ids, nill] : list[∀a. a → a]
+lst = choose[nill, ids] : list[∀a. a → a]
+lst = cons[ids, nill] : list[list[∀a. a → a]]
