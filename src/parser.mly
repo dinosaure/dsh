@@ -298,6 +298,8 @@ ty:
   { Type.Arrow (l, r) }
   | x = ty_forall
   { x }
+  | LAMBDA l = LNAME+ POINT t = ty
+  { Type.Abs (l, t) }
 
 ty_forall:
   | FORALL l = LNAME+ POINT x = ty
