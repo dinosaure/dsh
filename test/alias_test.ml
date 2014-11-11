@@ -36,21 +36,21 @@ end
 
 let tests =
   [
-    ("(. (int foo) (\\ (x : foo) x))",
-     OK ("(foo > foo)"));
-    ("(. (foo int) (. (bar int) (\\ (x : foo) x : bar)))",
-     OK ("(foo > bar)"));
-    ("(. (foo (V (a) (a > a))) (\\ (f : foo) (f 1)))",
-     OK ("(foo > int)"));
-    ("(. (foo (V (a) (a > a))) (\\ (f : foo) (, (f 1) (f true))))",
-     OK ("(foo > (* int bool))"));
-    ("(. (foo int) (.
-                       (bar (V (a) (a > foo)))
-                       (\\ (f : bar) (f true))))"),
-     OK ("(bar > foo)");
-    ("(. (a int)
-       (. (foo (\\ (a) (* a int)))
-        ((\\ (x : (foo a)) (fst x)) (, 5 7))))",
+    ("type int = foo in λx : foo. x",
+     OK ("foo → foo"));
+    ("type foo = int in type bar = int in λx : foo. x : bar",
+     OK ("foo → bar"));
+    ("type foo = ∀a. a → a in λf : foo. f[1]",
+     OK ("foo → int"));
+    ("type foo = ∀a. a → a in λf : foo. (f[1], f[true])",
+     OK ("foo → tuple[int, bool]"));
+    ("type foo = int in
+      type bar = ∀a. a → foo in
+      λf : bar. f[true]"),
+     OK ("bar → foo");
+    ("type a = int in
+      type foo = λa. tuple[a, int] in
+      (λx : foo[a]. fst[x])[(5, 7)]",
      OK ("a"));
   ]
 
@@ -60,7 +60,21 @@ let to_string = function
   | Unsafe -> "Fail"
 
 let normalize ty =
-  Type.to_string (Parser.single_ty Lexer.token (Lexing.from_string ty))
+  let lexbuf = Sedlexing.Utf8.from_string ty in
+  let token, start, stop = Ulexer.parse () in
+  try Type.to_string (Uparser.single_ty token (Sedlexing.Utf8.from_string ty))
+  with
+  | Uparser.Error ->
+    let loc = Location.make
+        (start lexbuf)
+        (stop lexbuf)
+    in
+    Printf.printf "Parsing error at %s:\n> %s\n%!"
+      (Location.to_string loc)
+      (Location.to_string_of_line loc ty);
+    raise (Invalid_argument "normalize")
+
+
 
 let rec compare r1 r2 =
   let open Synthesis in
@@ -86,8 +100,9 @@ let make_test (expr, result) =
   String.escaped expr >:: fun _ ->
     let re =
       try Type.Variable.reset ();
+        let token, _, _ = Ulexer.parse () in
         let ty = Synthesis.eval ~env:Core.core
-            (Parser.single_expr Lexer.token (Lexing.from_string expr)) in
+            (Uparser.single_expr token (Sedlexing.Utf8.from_string expr)) in
         OK (Type.to_string ty)
       with exn -> Fail exn
     in
