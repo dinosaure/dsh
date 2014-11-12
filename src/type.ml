@@ -134,18 +134,6 @@ let rec unlink = function
   | Alias (_, ty) -> unlink ty (* an Alias is a link to a type *)
   | ty -> ty
 
-let rec is_row = function
-  | RowExtend (_, _) -> true
-  | Var { contents = Link t } -> is_row t
-  | Var _ -> true
-  | RowEmpty -> true
-  | _ -> false
-
-let rec is_row_container = function
-  | Variant row -> assert (is_row row = true); true
-  | Record row -> assert (is_row row = true); true
-  | _ -> false
-
 let rec is_monomorphic = function
   | Forall _ -> false
   | Const _ -> true
@@ -251,23 +239,49 @@ let to_string ?(env = Environment.empty) ty =
   let buffer = Buffer.create 16 in
   expr env buffer ty; Buffer.contents buffer
 
-let rec bound_container ty1 ty2 =
-  let aux row1 row2 = match compact row1, compact row2 with
-    | (map1, Var ({ contents = Unbound _ } as var1)),
-      (map2, Var ({ contents = Unbound _ } as var2)) when var1 == var2 ->
-      (* break link to bound variant *)
-      RowExtend (map1, RowEmpty), RowExtend (map2, RowEmpty)
-    | (map1, rest1), (map2, rest2) ->
-      RowExtend (map1, rest1), RowExtend (map2, rest2)
+let rec bound ty1 ty2 =
+  let set = ref [] in
+  let add data =
+    if List.mem_assq data !set
+    then ()
+    else set := (data, ()) :: !set in
+  let del data = set := List.remove_assq data !set in
+  let rec collect = function
+    | App (f, a) -> collect f; List.iter collect a
+    | Arrow (a, r) -> List.iter collect a; collect r
+    | Var { contents = Link a } -> collect a
+    | Forall (_, ty) -> collect ty
+    | Alias (_, ty) -> collect ty
+    | Abs (_, ty) -> collect ty
+    | RowExtend (map, Var ({ contents = Unbound _ } as var)) ->
+      Set.iter (fun _ -> List.iter collect) map;
+      add var
+    | RowExtend (map, ty) ->
+      Set.iter (fun _ -> List.iter collect) map;
+      collect ty
+    | Variant ty -> collect ty
+    | Record ty -> collect ty
+    | ty -> ()
   in
-  match ty1, ty2 with
-  | Variant row1, Variant row2 ->
-    let row1', row2' = aux row1 row2 in
-    Variant row1', Variant row2'
-  | Record row1, Record row2 ->
-    let row1', row2' = aux row1 row2 in
-    Record row1', Record row2'
-  | ty1, ty2 -> raise (Invalid_argument "Type.bound")
+  let rec bound = function
+    | App (f, a) -> bound f; List.iter bound a
+    | Arrow (a, r) -> List.iter bound a; bound r
+    | Var { contents = Link a } -> bound a
+    | Forall (_, ty) -> bound ty
+    | Alias (_, ty) -> bound ty
+    | Abs (_, ty) -> bound ty
+    | RowExtend (map, Var ({ contents = Unbound _ } as var))
+      when List.mem_assq var !set ->
+      Set.iter (fun _ -> List.iter bound) map;
+      del var; var := Link RowEmpty
+    | RowExtend (map, ty) ->
+      Set.iter (fun _ -> List.iter bound) map;
+      bound ty
+    | Variant ty -> bound ty
+    | Record ty -> bound ty
+    | ty -> ()
+  in
+  collect ty1; bound ty2; (ty1, ty2)
 
 let rec copy = function
   | Const name -> Const name

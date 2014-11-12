@@ -613,9 +613,7 @@ let rec eval
            after the unification. Otherwise, there is a type error.
        *)
 
-       if Type.is_row_container a' && Type.is_row_container b'
-       then let (ret, _) = Type.bound_container a' b' in ret
-       else a')
+       let (ret, _) = Type.bound a' b' in ret)
     >!= raise_with_loc loc
   | Ast.Seq (loc, a, b) ->
     (fun () ->
