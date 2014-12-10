@@ -2,6 +2,7 @@ open OUnit2
 
 type t =
   | OK of string
+  | Output of string
   | Fail of exn
   | Unsafe (* lazy to describe exception *)
 
@@ -210,6 +211,7 @@ let rec compare r1 r2 =
   let open Synthesis in
   match r1, r2 with
   | OK ty1, OK ty2 -> (normalize ty1) = (normalize ty2)
+  | Output ty1, Output ty2 -> ty1 = ty2
   | Fail (Error (_, exn1)), Fail exn2
   | Fail exn1, Fail (Error (_, exn2)) ->
     compare (Fail exn1) (Fail exn2)
