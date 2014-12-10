@@ -29,6 +29,19 @@ type t =
   | Closure of (t Environment.t * string list * Ast.t * string option)
   | Primitive of (t list -> t)
   | Variant of (string * t)
+  | Record of ((string * t) list)
+
+let rec compact = function
+  | Ast.RecordExtend (_, map, rest) ->
+    begin
+      match compact rest with
+      | rest_map when Type.Set.is_empty rest_map ->
+        Type.Set.empty
+      | rest_map ->
+        Type.Set.merge map rest_map
+    end
+  | Ast.RecordEmpty _ -> Type.Set.empty
+  | _ -> raise (Invalid_argument "Interpreter.compact")
 
 let rec to_string = function
   | Int i -> string_of_int i
@@ -168,6 +181,19 @@ let rec eval env = function
         | _ -> raise Pattern_matching_fail
       in compute_branch patterns)
     >!= raise_with_loc loc
+  | Ast.RecordEmpty _ -> Record []
+  | Ast.RecordSelect (_, record, field) ->
+    begin match eval env record with
+    | Record lst -> List.assoc field lst
+    | _ -> raise (Invalid_argument "Interpreter.eval") end
+  | Ast.RecordRestrict (_, record, field) ->
+    begin match eval env record with
+    | Record lst ->
+      Record (List.remove_assoc field lst)
+    | _ -> raise (Invalid_argument "Interpreter.eval") end
+  | (Ast.RecordExtend (_, map, rest) as record) ->
+    Record (Type.Set.bindings (compact record)
+            |> List.map (fun (k, v) -> (k, List.hd v |> eval env)))
 
 and compute_pattern value pattern = match value, pattern with
   | (value, Pattern.Var (_, name)) -> [(name, value)]

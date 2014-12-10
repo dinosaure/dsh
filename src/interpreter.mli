@@ -14,6 +14,7 @@ type t =
   | Closure of (t Environment.t * string list * Ast.t * string option)
   | Primitive of (t list -> t)
   | Variant of (string * t)
+  | Record of ((string * t) list)
 
 exception Unbound_variable of string
 exception Expected_function
