@@ -945,6 +945,17 @@ let rec eval
       unification ty (eval ~gamma ~env ~level expr);
       rt)
     >!= raise_with_loc loc
+  | Ast.RecordExtend (loc, map, expr) ->
+    (fun () ->
+      let ty =
+        Type.Set.map
+          (fun lst -> List.map (fun expr -> eval ~gamma ~env ~level expr) lst)
+          map
+      in
+      let rest = Type.Variable.make level in
+      unification (Type.Record rest) (eval ~gamma ~env ~level expr);
+      Type.Record (Type.RowExtend (ty, rest)))
+    >!= raise_with_loc loc
 
 (** compute_argument : after infering the type of argument, we use the function
     [subsume] (or [unification] if the argument is annotated) to determine if
