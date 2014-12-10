@@ -863,6 +863,10 @@ let rec eval
 
            Both variants can be bounded only if their variables are the same
            after the unification. Otherwise, there is a type error.
+
+           XXX: It's wrong !
+           echo 'if true then `A else `B;;' | ocaml
+           - : [> `A | `B ] = `A
        *)
 
        let (ret, _) = Type.bound a' b' in ret)
