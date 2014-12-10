@@ -10,7 +10,7 @@ AlphaFeatures:           ocamlbuild_more_args
 
 Library dsh
   Path:                  src
-  Modules:               Location, Ulexer, Parser, Uparser, Pattern, Ast,
+  Modules:               Loc, ULexer, AParser, UParser, Pattern, Ast,
                          Type, Gamma, Synthesis, Core, Interpreter
   BuildDepends:          batteries, menhirLib, sedlex
 
@@ -23,6 +23,13 @@ Document "dsh"
   XOCamlbuildLibraries:  dsh
   XOCamlbuildExtraArgs:
     "-docflags '-colorize-code -keep-code -charset utf-8'"
+
+Executable "top"
+  Path:                  top
+  MainIs:                top.ml
+  BuildDepends:          compiler-libs.toplevel, threads, utop
+  ByteOpt:               -linkpkg -linkall -predicates create_toploop
+  NativeOpt:             -linkpkg -linkall -predicates create_toploop
 
 Executable dsh
   Path:                  bin

@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: 39f4f61fbbffff7913361aca636c3634)
+# DO NOT EDIT (digest: 4f43f4e21615e140caf80550f50f2b27)
 # Ignore VCS directories, you can use the same kind of rule outside
 # OASIS_START/STOP if you want to exclude directories that contains
 # useless stuff for the build process
@@ -19,6 +19,17 @@ true: annot, bin_annot
 <src/*.ml{,i,y}>: pkg_batteries
 <src/*.ml{,i,y}>: pkg_menhirLib
 <src/*.ml{,i,y}>: pkg_sedlex
+# Executable top
+"top/top.byte": oasis_executable_top_byte
+<top/*.ml{,i,y}>: oasis_executable_top_byte
+"top/top.byte": oasis_executable_top_native
+<top/*.ml{,i,y}>: oasis_executable_top_native
+"top/top.byte": pkg_compiler-libs.toplevel
+"top/top.byte": pkg_threads
+"top/top.byte": pkg_utop
+<top/*.ml{,i,y}>: pkg_compiler-libs.toplevel
+<top/*.ml{,i,y}>: pkg_threads
+<top/*.ml{,i,y}>: pkg_utop
 # Executable dsh
 "bin/dsh.byte": pkg_batteries
 "bin/dsh.byte": pkg_lambda-term

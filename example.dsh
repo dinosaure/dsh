@@ -28,3 +28,10 @@ apply = (λf x. f[x]) : ∀a b. (a → b) → a → b
 lst = choose[ids, nill] : list[∀a. a → a]
 lst = choose[nill, ids] : list[∀a. a → a]
 lst = cons[ids, nill] : list[list[∀a. a → a]]
+
+Y(fact) = λx. match x {
+  | 0 → 1
+  | n → (n * fact[(n - 1)])
+}
+
+num[fact[5]]
