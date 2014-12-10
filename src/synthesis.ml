@@ -819,7 +819,15 @@ let rec eval
        let n' = Type.Variable.make (level + 1) in
        let ext = Environment.extend env n n' in
        let e' = eval ~gamma ~env:ext ~level:(level + 2) e in
-       unification n' e';
+
+       (** The type of recursive function N will surely not subject to
+           generalization. However, this is certainly the case for E (which is
+           often the result of a `Lambda`) and it will contain a `Forall` (which
+           will fake for a simple unification). Thus, we consider that N is an
+           instance of E and we check it with the [subsume] function.
+       *)
+
+       subsume ~gamma ~level n' e';
        eval
          ~gamma
          ~env:(Environment.extend env n (generalization level e'))
