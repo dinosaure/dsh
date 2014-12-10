@@ -35,3 +35,10 @@ val eval :
   ?gamma:Gamma.t ->
   ?env:Type.t Environment.t ->
   ?level:int -> Ast.t -> Type.t
+
+val compute_pattern :
+  Gamma.t ->
+  (Environment.key * Type.t) list ->
+  int ->
+  Pattern.t ->
+  Type.t * (Environment.key * Type.t) list
