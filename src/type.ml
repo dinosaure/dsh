@@ -265,12 +265,14 @@ let rec bound ty1 ty2 =
     | Forall (_, ty) -> collect ty
     | Alias (_, ty) -> collect ty
     | Abs (_, ty) -> collect ty
-    | RowExtend (map, Var ({ contents = Unbound _ } as var)) ->
-      Set.iter (fun _ -> List.iter collect) map;
-      add var
     | RowExtend (map, ty) ->
+      begin match unlink ty with
+        | Var ({ contents = Unbound _ } as var) ->
+          Set.iter (fun _ -> List.iter collect) map;
+          add var
+        | ty -> collect ty
+      end;
       Set.iter (fun _ -> List.iter collect) map;
-      collect ty
     | Variant ty -> collect ty
     | Record ty -> collect ty
     | ty -> ()
