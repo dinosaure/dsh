@@ -24,6 +24,7 @@ let to_string a =
   let buffer = Buffer.create 16 in
   let rec compute buffer = function
     | Var (_, name) -> Buffer.add_string buffer name
+    | Any _ -> Buffer.add_string buffer "_"
     | Variant (_, name, Unit _) ->
       Printf.bprintf buffer "%s()" name
     | Variant (_, name, expr) ->
