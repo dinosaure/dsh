@@ -1,23 +1,24 @@
 open CamomileLibraryDyn.Camomile
 
 let () = Random.self_init ()
+let () = Printexc.record_backtrace true
 
 let interpret expr =
   let lexbuf = Sedlexing.Utf8.from_string expr in
-  let token, start, stop = Ulexer.parse () in
+  let token, start, stop = ULexer.parse () in
   try
-    let tree = Uparser.single_expr token lexbuf in
+    let tree = UParser.single_expr token lexbuf in
     let ty = Synthesis.eval ~env:Core.core tree in
     let rt = Interpreter.eval Core.runtime tree in
     Printf.sprintf "%s : %s" (Interpreter.to_string rt) (Type.to_string ty)
   with
-  | Uparser.Error ->
+  | UParser.Error ->
     let loc = Loc.make
         (start lexbuf)
         (stop lexbuf)
     in Printf.sprintf "Parsing error at:\n%s\n%!"
       (Loc.to_string_of_line loc expr)
-  | Ulexer.Lexical_error ->
+  | ULexer.Lexical_error ->
     let loc = Loc.make
         (start lexbuf)
         (stop lexbuf)
@@ -34,14 +35,14 @@ let interpret expr =
 
 let rec file inch filename =
   let lexbuf = Sedlexing.Utf8.from_channel inch in
-  let token, start, stop = Ulexer.parse () in
+  let token, start, stop = ULexer.parse () in
   try
-    let tree = Uparser.exprs token lexbuf in
+    let tree = UParser.exprs token lexbuf in
     let _ = Synthesis.eval ~env:Core.core tree in
     (* let _ = Interpreter.eval Core.runtime tree in *)
     ()
   with
-  | Uparser.Error ->
+  | UParser.Error ->
     let loc = Loc.make
         (start lexbuf)
         (stop lexbuf)
@@ -49,7 +50,7 @@ let rec file inch filename =
     Printf.printf "Parsing error at %s:\n> %s\n%!"
       (Loc.to_string loc)
       (Loc.to_string_of_file loc filename)
-  | Ulexer.Lexical_error ->
+  | ULexer.Lexical_error ->
     let loc = Loc.make
         (start lexbuf)
         (stop lexbuf)

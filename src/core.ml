@@ -1,20 +1,20 @@
 let add expr env =
   let lexbuf = Sedlexing.Utf8.from_string expr in
-  let token, start, stop = Ulexer.parse () in
+  let token, start, stop = ULexer.parse () in
   try
-    let expr = Uparser.single_expr token lexbuf in
+    let expr = UParser.single_expr token lexbuf in
     match expr with
     | Ast.Ann (_, Ast.Var (_, name), ([], ty)) ->
       Synthesis.Environment.add name ty env
     | _ -> raise (Invalid_argument ("Core.add: " ^ (Ast.to_string expr)))
   with
-  | Uparser.Error ->
+  | UParser.Error ->
     let loc = Loc.make
         (start lexbuf)
         (stop lexbuf)
     in Printf.printf "Parsing error at:\n%s\n%!"
       (Loc.to_string_of_line loc expr); env
-  | Ulexer.Lexical_error ->
+  | ULexer.Lexical_error ->
     let loc = Loc.make
         (start lexbuf)
         (stop lexbuf)

@@ -181,19 +181,22 @@ let tests =
      OK ("∀a. a → a"));
     ("λf : ∀a b. a → b x y. equal[f[x], y]",
      OK ("∀a b.(∀c d. c → d) → a → b → bool"));
+    ("Y(fib) = λn. match n { 0 → 1 | 1 → 1 | n → (fib[(n - 1)] + fib[(n - 2)])}
+      in fib", OK ("int → int"));
   ]
 
 let to_string = function
   | Fail e -> "Fail: " ^ (Printexc.to_string e)
   | OK ty -> "OK: " ^ ty
+  | Output str -> "Output: " ^ str
   | Unsafe -> "Fail"
 
 let normalize ty =
   let lexbuf = Sedlexing.Utf8.from_string ty in
-  let token, start, stop = Ulexer.parse () in
-  try Type.to_string (Uparser.single_ty token (Sedlexing.Utf8.from_string ty))
+  let token, start, stop = ULexer.parse () in
+  try Type.to_string (UParser.single_ty token (Sedlexing.Utf8.from_string ty))
   with
-  | Uparser.Error ->
+  | UParser.Error ->
     let loc = Loc.make
         (start lexbuf)
         (stop lexbuf)
@@ -227,9 +230,9 @@ let make_test (expr, result) =
   String.escaped expr >:: fun _ ->
     let re =
       try Type.Variable.reset ();
-        let token, _, _ = Ulexer.parse () in
+        let token, _, _ = ULexer.parse () in
         let ty = Synthesis.eval ~env:Core.core
-            (Uparser.single_expr token (Sedlexing.Utf8.from_string expr)) in
+            (UParser.single_expr token (Sedlexing.Utf8.from_string expr)) in
         OK (Type.to_string ty)
       with Synthesis.Error (_, exn) -> Fail exn
          | exn -> Fail exn

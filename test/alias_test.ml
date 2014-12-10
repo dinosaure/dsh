@@ -61,10 +61,10 @@ let to_string = function
 
 let normalize ty =
   let lexbuf = Sedlexing.Utf8.from_string ty in
-  let token, start, stop = Ulexer.parse () in
-  try Type.to_string (Uparser.single_ty token (Sedlexing.Utf8.from_string ty))
+  let token, start, stop = ULexer.parse () in
+  try Type.to_string (UParser.single_ty token (Sedlexing.Utf8.from_string ty))
   with
-  | Uparser.Error ->
+  | UParser.Error ->
     let loc = Loc.make
         (start lexbuf)
         (stop lexbuf)
@@ -100,9 +100,9 @@ let make_test (expr, result) =
   String.escaped expr >:: fun _ ->
     let re =
       try Type.Variable.reset ();
-        let token, _, _ = Ulexer.parse () in
+        let token, _, _ = ULexer.parse () in
         let ty = Synthesis.eval ~env:Core.core
-            (Uparser.single_expr token (Sedlexing.Utf8.from_string expr)) in
+            (UParser.single_expr token (Sedlexing.Utf8.from_string expr)) in
         OK (Type.to_string ty)
       with exn -> Fail exn
     in
