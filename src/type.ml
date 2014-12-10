@@ -216,7 +216,7 @@ let to_string ?(env = Environment.empty) ty =
         Printf.bprintf buffer "%s : %a" label (expr env) ty in
       let add_map buffer map =
         Printf.bprintf buffer "%a"
-          (Buffer.add_set ~sep:", "
+          (Buffer.add_set ~sep:" | "
           (fun buffer (label, lst) ->
             Printf.bprintf buffer "%a"
               (Buffer.add_list ~sep:", " (add_label label))
@@ -225,7 +225,8 @@ let to_string ?(env = Environment.empty) ty =
       in
       begin
         match unlink rest with
-        | RowEmpty -> add_map buffer map
+        | RowEmpty ->
+          Printf.bprintf buffer "%a" add_map map
         | RowExtend _ -> assert false
         | ty ->
           Printf.bprintf buffer "%a | %a"
