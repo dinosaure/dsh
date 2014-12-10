@@ -73,6 +73,8 @@ let core =
   |> add "ids'    : (list[∀a. (a → a)] → list[∀a. (a → a)])"
   |> add "magid   : ((∀a b. (a → b)) → (∀a b. (a → b)))"
 
+  |> add "fix     : ∀a v. ((a → b) → (a → b)) → (a → b)"
+
 let add name func env =
   Interpreter.Environment.add name (Interpreter.Primitive func) env
 
@@ -92,10 +94,21 @@ let runtime =
                   (Interpreter.Environment.extend ext [fix; name] [closure; a])
                   body
             | _ -> raise_error "apply")
-  |> add "const" (function [a; b] -> a | _ -> raise_error "const")
+  |> add "const"  (function [a; b] -> a | _ -> raise_error "const")
+
+  |> add "head"   (function [List l] -> List.hd l | _ -> raise_error "head")
+  |> add "tail"   (function [List l] -> List (List.tl l)
+                          | _ -> raise_error "tail")
+  |> Environment.add "nill" (List [])
+  |> add "cons"   (function [e; List l] -> List (e :: l)
+                          | _ -> raise_error "cons")
+  |> add "single" (function [e] -> List [ e ] | _ -> raise_error "single")
+  |> add "empty"  (function [List l] -> Bool (List.length l = 0)
+                          | _ -> raise_error "empty")
 
   |> add "succ"   (function [Int n] -> Int (n + 1) | _ -> raise_error "succ")
   |> add "pred"   (function [Int n] -> Int (n - 1) | _ -> raise_error "pred")
+
   |> add "+"      (function [Int a; Int b] -> Int (a + b)
                           | _ -> raise_error "+")
   |> add "-"      (function [Int a; Int b] -> Int (a - b)
