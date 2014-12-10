@@ -158,7 +158,7 @@ let rec is_monomorphic = function
   | Abs _ -> false
   | Variant t -> is_monomorphic t
   | Record t -> is_monomorphic t
-  | RowEmpty -> false
+  | RowEmpty -> true
   | RowExtend (map, rest) ->
     Set.exists (fun key -> List.exists is_monomorphic) map
     && is_monomorphic rest
