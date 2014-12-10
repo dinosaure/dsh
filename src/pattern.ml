@@ -32,7 +32,8 @@ let to_string a =
         name
         compute expr
     | Tuple (_, l) ->
-      raise (Failure "Not implemented")
+      Printf.bprintf buffer "%a"
+        (Buffer.add_list ~sep:", " compute) l
     | Int (_, i) ->
       Printf.bprintf buffer "%d" i
     | Char (_, c) ->
