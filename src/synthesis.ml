@@ -885,17 +885,51 @@ let rec eval
       result')
     >!= raise_with_loc loc
 
-  | Ast.Case (loc, expr, patterns) ->
+  | Ast.Case (loc, expr, pattern) ->
+    let make_matrix ty pss =
+      let pss = List.map (fun p -> [TPattern.of_pattern ty p; TPattern.omega]) pss in
+      let ty = [ty; Type.Const "ε"] in
+      (ty, pss)
+    in
     (fun () ->
-      let ty = eval ~gamma ~env ~level expr in
-      let rt = Type.Variable.make (level + 1) in
-      let compute_branch (pattern, expr) =
-        let (ty', env) = compute_pattern gamma env level pattern in
-        unification ty ty';
-        let rt' = eval ~gamma ~env ~level expr in
-        unification rt rt'
-      in
-      List.iter compute_branch patterns;
+       let ty = eval ~gamma ~env ~level expr in
+       let rt = Type.Variable.make level in
+       let compute_branch (branch, expr) =
+         let (ty', garbage) = compute_pattern gamma [] level branch in
+         unification ty ty';
+         let env = List.fold_right (fun (k, v) -> Environment.add k v) garbage env in
+         let rt' = eval ~gamma ~env ~level expr in
+         unification rt rt'
+       in
+       List.iter compute_branch pattern;
+       let (ty, pss) = make_matrix ty (List.map fst pattern) in
+       ignore (TPattern.pressure_variants pss);
+       rt)
+    >!= raise_with_loc loc
+
+  | Ast.RecordEmpty loc ->
+    (fun () -> Type.Record Type.RowEmpty)
+    >!= raise_with_loc loc
+  | Ast.RecordSelect (loc, expr, label) ->
+    (fun () ->
+      let rest = Type.Variable.make level in
+      let field = Type.Variable.make level in
+      let ty =
+        Type.Record
+          (Type.RowExtend (Type.Set.singleton label [field], rest)) in
+      let rt = field in
+      unification ty (eval ~gamma ~env ~level expr);
+      rt)
+    >!= raise_with_loc loc
+  | Ast.RecordRestrict (loc, expr, label) ->
+    (fun () ->
+      let rest = Type.Variable.make level in
+      let field = Type.Variable.make level in
+      let ty =
+        Type.Record
+          (Type.RowExtend (Type.Set.singleton label [field], rest)) in
+      let rt = Type.Record rest in
+      unification ty (eval ~gamma ~env ~level expr);
       rt)
     >!= raise_with_loc loc
 
@@ -935,24 +969,26 @@ and compute_argument gamma env level tys a =
        else subsume ~gamma ~level ty ty')
     slst
 
-and compute_pattern gamma env level = function
+and compute_pattern gamma lst level = function
   | Pattern.Var (_, name) ->
-    let ty = Type.Variable.make (level + 1) in
-    (ty, Environment.extend env name ty)
-  | Pattern.Bool _ -> (Type.bool, env)
-  | Pattern.Int _ -> (Type.int, env)
-  | Pattern.Char _ -> (Type.char, env)
-  | Pattern.Unit _ -> (Type.unit, env)
+    let ty = Type.Variable.make level in
+    (ty, (name, ty) :: lst)
+  | Pattern.Any _ ->
+    (Type.Variable.make level, lst)
+  | Pattern.Bool _ -> (Type.bool, lst)
+  | Pattern.Int _ -> (Type.int, lst)
+  | Pattern.Char _ -> (Type.char, lst)
+  | Pattern.Unit _ -> (Type.unit, lst)
   | Pattern.Tuple (_, l) ->
-    let (tys, new_env) =
+    let (tys, new_lst) =
       List.fold_left
-        (fun (tys, env) x ->
-          let (ty, new_env) = compute_pattern gamma env level x in
-          (ty :: tys, new_env))
-        ([], env) l
-    in (Type.tuple (List.rev tys), new_env)
+        (fun (tys, lst) x ->
+          let (ty, new_lst) = compute_pattern gamma lst level x in
+          (ty :: tys, new_lst))
+        ([], lst) l
+    in (Type.tuple (List.rev tys), new_lst)
   | Pattern.Variant (_, ctor, expr) ->
-    let (expr', env') = compute_pattern gamma env level expr in
+    let (expr', lst') = compute_pattern gamma lst level expr in
     let rest' = Type.Variable.make level in
     (Type.Variant (Type.RowExtend (Type.Set.singleton ctor [expr'], rest')),
-     env')
+     lst')
