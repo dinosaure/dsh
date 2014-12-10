@@ -127,6 +127,17 @@ let rec compact = function
   | RowEmpty -> (Set.empty, RowEmpty)
   | ty -> raise (Invalid_argument "Type.compact")
 
+let is_close ty =
+  let rec deep_check = function
+    | Var ({ contents = Link ty }) -> deep_check ty
+    | Alias (_, ty) -> deep_check ty
+    | RowEmpty -> true
+    | _ -> false
+  in match ty with
+  | Variant t -> let (_, rest) = compact t in deep_check rest
+  | Record t -> let (_, rest) = compact t in deep_check rest
+  | _ -> false
+
 let rec unlink = function
   | Var ({ contents = Link ty } as var) ->
     let ty = unlink ty in
@@ -282,6 +293,14 @@ let rec bound ty1 ty2 =
     | ty -> ()
   in
   collect ty1; bound ty2; (ty1, ty2)
+
+let rec close_row = function
+  | RowExtend (map, Var ({ contents = Unbound _ } as var)) ->
+    var := Link RowEmpty
+  | RowExtend (map, rest) -> close_row rest
+  | Alias (_, ty) -> close_row ty
+  | Var { contents = Link ty } -> close_row ty
+  | _ -> ()
 
 let rec copy = function
   | Const name -> Const name

@@ -52,6 +52,8 @@ val unit : t
 val tuple : t list -> t
 
 val compact : row -> row list Set.t * row
+val is_close : t -> bool
+val close_row : t -> unit
 val bound : t -> t -> t * t
 val unlink : t -> t
 val is_monomorphic : t -> bool
