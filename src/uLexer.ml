@@ -57,46 +57,47 @@ let rec token ~pos lexbuf =
       pos.lnum <- pos.lnum + 1;
       pos.bol <- pos.cnum;
       token ~pos lexbuf
-    | '\\' -> Uparser.BACKSLASH
-    | '(' -> Uparser.LPAR
-    | ')' -> Uparser.RPAR
-    | '[' -> Uparser.LBRACKET
-    | ']' -> Uparser.RBRACKET
-    | '{' -> Uparser.LBRACE
-    | '}' -> Uparser.RBRACE
-    | ':' -> Uparser.COLON
-    | ';' -> Uparser.SEMICOLON
-    | '|' -> Uparser.PIPE
-    | ',' -> Uparser.COMMA
-    | '?' -> Uparser.MARK
-    | '=' -> Uparser.EQUAL
-    | '.' -> Uparser.POINT
+    | '\\' -> UParser.BACKSLASH
+    | '(' -> UParser.LPAR
+    | ')' -> UParser.RPAR
+    | '[' -> UParser.LBRACKET
+    | ']' -> UParser.RBRACKET
+    | '{' -> UParser.LBRACE
+    | '}' -> UParser.RBRACE
+    | ':' -> UParser.COLON
+    | ';' -> UParser.SEMICOLON
+    | '|' -> UParser.PIPE
+    | ',' -> UParser.COMMA
+    | '?' -> UParser.MARK
+    | '=' -> UParser.EQUAL
+    | '.' -> UParser.POINT
+    | '_' -> UParser.WILDCARD
 
-    | 0x2192 -> Uparser.ARROW      (* → *)
-    | 0x2203 -> Uparser.SOME       (* ∃ *)
-    | 0x2200 -> Uparser.FORALL     (* ∀ *)
-    | 0x03bb -> Uparser.LAMBDA     (* λ *)
-    | 0x00f8 -> Uparser.NULL       (* ø *)
+    | 0x2192 -> UParser.ARROW      (* → *)
+    | 0x2203 -> UParser.SOME       (* ∃ *)
+    | 0x2200 -> UParser.FORALL     (* ∀ *)
+    | 0x03bb -> UParser.LAMBDA     (* λ *)
+    | 0x00f8 -> UParser.NULL       (* ø *)
 
-    | 'Y' -> Uparser.REC
-    | "in" -> Uparser.IN
-    | "match" -> Uparser.MATCH
-    | "type" -> Uparser.TYPE
+    | 'Y' -> UParser.REC
+    | "in" -> UParser.IN
+    | "match" -> UParser.MATCH
+    | "type" -> UParser.TYPE
 
-    | "true" -> Uparser.BOOL true
-    | "false" -> Uparser.BOOL false
+    | "true" -> UParser.BOOL true
+    | "false" -> UParser.BOOL false
 
     | Plus digit ->
-      Uparser.NUMBER (int_of_string (Sedlexing.Utf8.lexeme lexbuf))
+      UParser.NUMBER (int_of_string (Sedlexing.Utf8.lexeme lexbuf))
 
-    | uname -> Uparser.UNAME (Sedlexing.Utf8.lexeme lexbuf)
-    | lname -> Uparser.LNAME (Sedlexing.Utf8.lexeme lexbuf)
+    | uname -> UParser.UNAME (Sedlexing.Utf8.lexeme lexbuf)
+    | lname -> UParser.LNAME (Sedlexing.Utf8.lexeme lexbuf)
 
-    | eof -> Uparser.EOF
+    | eof -> UParser.EOF
 
     | _ ->
       let buffer = Buffer.create 16 in
-      Uparser.LNAME (ident buffer lexbuf)
+      UParser.LNAME (ident buffer lexbuf)
   in
   if !jump_lexeme
   then pos.cnum <- pos.cnum + (String.length (Sedlexing.Utf8.lexeme lexbuf));
@@ -127,7 +128,7 @@ let parse () =
    (fun (_ : Sedlexing.lexbuf) -> transform pos))
 
 let to_string token =
-  let open Uparser in match token with
+  let open UParser in match token with
   | LPAR -> "("
   | RPAR -> ")"
   | LBRACKET -> "["
@@ -141,6 +142,7 @@ let to_string token =
   | MARK -> "?"
   | EQUAL -> "="
   | POINT -> "."
+  | WILDCARD -> "_"
   | BACKSLASH -> "\\"
   | ARROW -> "→"
   | SOME -> "∃"
