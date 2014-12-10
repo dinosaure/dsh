@@ -36,7 +36,7 @@ let rec compact = function
     begin
       match compact rest with
       | rest_map when Type.Set.is_empty rest_map ->
-        Type.Set.empty
+        map
       | rest_map ->
         Type.Set.merge map rest_map
     end
