@@ -25,6 +25,7 @@ type t =
   | Char of char
   | Tuple of t list
   | Unit
+  | List of t list
   | Closure of (t Environment.t * string list * Ast.t * string option)
   | Primitive of (t list -> t)
   | Variant of (string * t)
@@ -35,6 +36,7 @@ let rec to_string = function
   | Char c -> String.make 1 c
   | Tuple l ->
     Printf.sprintf "(%s)" (String.of_list ~sep:", " to_string l)
+  | List l -> Printf.sprintf "[%s]" (String.of_list ~sep:", " to_string l)
   | Unit -> "ø"
   | Closure _ -> "#closure"
   | Primitive _ -> "#primitive"

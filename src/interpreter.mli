@@ -10,6 +10,7 @@ type t =
   | Char of char
   | Tuple of t list
   | Unit
+  | List of t list
   | Closure of (t Environment.t * string list * Ast.t * string option)
   | Primitive of (t list -> t)
   | Variant of (string * t)
