@@ -17,7 +17,7 @@ type t =
 exception Unbound_variable of string
 exception Expected_function
 exception Expected_boolean
-exception Error of (Location.t * exn)
+exception Error of (Loc.t * exn)
 
 val to_string : t -> string
 

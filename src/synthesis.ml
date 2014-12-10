@@ -16,7 +16,7 @@ exception Polymorphic_argument_inferred of Type.t list
 exception No_instance of (Type.t * Type.t)
 exception Unknown_type of string
 exception Unbound_constructor of string
-exception Error of (Location.t * exn)
+exception Error of (Loc.t * exn)
 
 let () = Printexc.register_printer
     (function
@@ -52,7 +52,7 @@ let () = Printexc.register_printer
       | Error (loc, exn) ->
           Some (Printf.sprintf "Typing error: %s at %s"
                 (Printexc.to_string exn)
-                (Location.to_string loc))
+                (Loc.to_string loc))
       | _ -> None)
 
 (** compute_variable : makes sure that the type variable being

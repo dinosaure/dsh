@@ -16,7 +16,7 @@ exception Polymorphic_argument_inferred of Type.t list
 exception No_instance of (Type.t * Type.t)
 exception Unknown_type of string
 exception Unbound_constructor of string
-exception Error of (Location.t * exn)
+exception Error of (Loc.t * exn)
 
 val unification : Type.t -> Type.t -> unit
 val generalization : int -> Type.t -> Type.t

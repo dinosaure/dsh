@@ -194,13 +194,13 @@ let normalize ty =
   try Type.to_string (Uparser.single_ty token (Sedlexing.Utf8.from_string ty))
   with
   | Uparser.Error ->
-    let loc = Location.make
+    let loc = Loc.make
         (start lexbuf)
         (stop lexbuf)
     in
     Printf.printf "Parsing error at %s:\n> %s\n%!"
-      (Location.to_string loc)
-      (Location.to_string_of_line loc ty);
+      (Loc.to_string loc)
+      (Loc.to_string_of_line loc ty);
     raise (Invalid_argument "normalize")
 
 let rec compare r1 r2 =

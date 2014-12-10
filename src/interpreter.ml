@@ -43,13 +43,18 @@ let rec to_string = function
     Printf.sprintf "%s(%s)" ctor (String.of_list ~sep:", " to_string l)
   | Variant (ctor, expr) ->
     Printf.sprintf "%s(%a)" ctor (fun () -> to_string) expr
+  | Record map ->
+    let add_field (name, value) =
+      Printf.sprintf "%s = %a" name (fun () -> to_string) value in
+    Printf.sprintf "{%s}"
+      (String.concat "; " (List.map add_field map))
 
 exception Unbound_variable of string
 exception Expected_function
 exception Expected_boolean
 exception Mismatch_pattern of (Pattern.t * t)
 exception Pattern_matching_fail
-exception Error of (Location.t * exn)
+exception Error of (Loc.t * exn)
 
 let () = Printexc.register_printer
     (function
@@ -66,7 +71,7 @@ let () = Printexc.register_printer
       | Error (loc, exn) ->
         Some (Printf.sprintf "%s at %s"
                 (Printexc.to_string exn)
-                (Location.to_string loc))
+                (Loc.to_string loc))
       | _ -> None)
 
 let ( >!= ) func handle_error =

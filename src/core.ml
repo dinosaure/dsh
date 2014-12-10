@@ -9,17 +9,17 @@ let add expr env =
     | _ -> raise (Invalid_argument ("Core.add: " ^ (Ast.to_string expr)))
   with
   | Uparser.Error ->
-    let loc = Location.make
+    let loc = Loc.make
         (start lexbuf)
         (stop lexbuf)
     in Printf.printf "Parsing error at:\n%s\n%!"
-      (Location.to_string_of_line loc expr); env
+      (Loc.to_string_of_line loc expr); env
   | Ulexer.Lexical_error ->
-    let loc = Location.make
+    let loc = Loc.make
         (start lexbuf)
         (stop lexbuf)
     in Printf.printf "Lexical error at:\n%s%!"
-      (Location.to_string_of_line loc expr); env
+      (Loc.to_string_of_line loc expr); env
 
 let core =
   Synthesis.Environment.empty

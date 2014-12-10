@@ -1,10 +1,11 @@
 type t =
-  | Var of (Location.t * string)
-  | Variant of (Location.t * string * t)
-  | Tuple of (Location.t * t list)
-  | Int of (Location.t * int)
-  | Char of (Location.t * char)
-  | Bool of (Location.t * bool)
-  | Unit of Location.t
+  | Var of (Loc.t * string)
+  | Any of Loc.t
+  | Variant of (Loc.t * string * t)
+  | Tuple of (Loc.t * t list)
+  | Int of (Loc.t * int)
+  | Char of (Loc.t * char)
+  | Bool of (Loc.t * bool)
+  | Unit of Loc.t
 
 val to_string : t -> string

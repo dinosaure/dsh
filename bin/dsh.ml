@@ -12,25 +12,25 @@ let interpret expr =
     Printf.sprintf "%s : %s" (Interpreter.to_string rt) (Type.to_string ty)
   with
   | Uparser.Error ->
-    let loc = Location.make
+    let loc = Loc.make
         (start lexbuf)
         (stop lexbuf)
     in Printf.sprintf "Parsing error at:\n%s\n%!"
-      (Location.to_string_of_line loc expr)
+      (Loc.to_string_of_line loc expr)
   | Ulexer.Lexical_error ->
-    let loc = Location.make
+    let loc = Loc.make
         (start lexbuf)
         (stop lexbuf)
     in Printf.sprintf "Lexical error at:\n%s%!"
-      (Location.to_string_of_line loc expr)
+      (Loc.to_string_of_line loc expr)
   | Synthesis.Error (loc, _) as exn ->
     Printf.sprintf "Typing error: %s at:\n%s%!"
       (Printexc.to_string exn)
-      (Location.to_string_of_line loc expr)
+      (Loc.to_string_of_line loc expr)
   | Interpreter.Error (loc, _) as exn ->
     Printf.sprintf "Interpreter error: %s at:\n%s%!"
       (Printexc.to_string exn)
-      (Location.to_string_of_line loc expr)
+      (Loc.to_string_of_line loc expr)
 
 let rec file inch filename =
   let lexbuf = Sedlexing.Utf8.from_channel inch in
@@ -42,31 +42,31 @@ let rec file inch filename =
     ()
   with
   | Uparser.Error ->
-    let loc = Location.make
+    let loc = Loc.make
         (start lexbuf)
         (stop lexbuf)
     in
     Printf.printf "Parsing error at %s:\n> %s\n%!"
-      (Location.to_string loc)
-      (Location.to_string_of_file loc filename)
+      (Loc.to_string loc)
+      (Loc.to_string_of_file loc filename)
   | Ulexer.Lexical_error ->
-    let loc = Location.make
+    let loc = Loc.make
         (start lexbuf)
         (stop lexbuf)
     in
     Printf.printf "Lexical error at %s:\n> %s\n%!"
-      (Location.to_string loc)
-      (Location.to_string_of_file loc filename)
+      (Loc.to_string loc)
+      (Loc.to_string_of_file loc filename)
   | Synthesis.Error (loc, _) as exn ->
     Printf.printf "Typing error: %s at %s:\n> %s\n%!"
       (Printexc.to_string exn)
-      (Location.to_string loc)
-      (Location.to_string_of_file loc filename)
+      (Loc.to_string loc)
+      (Loc.to_string_of_file loc filename)
   | Interpreter.Error (loc, _) as exn ->
     Printf.printf "Interpreter error: %s at %s:\n> %s\n%!"
       (Printexc.to_string exn)
-      (Location.to_string loc)
-      (Location.to_string_of_file loc filename)
+      (Loc.to_string loc)
+      (Loc.to_string_of_file loc filename)
 
 let prompt =
   let open LTerm_text in
