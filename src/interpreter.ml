@@ -171,6 +171,7 @@ let rec eval env = function
 
 and compute_pattern value pattern = match value, pattern with
   | (value, Pattern.Var (_, name)) -> [(name, value)]
+  | (value, Pattern.Any _) -> []
   | (Bool b1, Pattern.Bool (_, b2)) when b1 = b2 -> []
   | (Int i1, Pattern.Int (_, i2)) when i1 = i2 -> []
   | (Char c1, Pattern.Char (_, c2)) when c1 = c2 -> []
