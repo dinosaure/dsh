@@ -556,7 +556,8 @@ let rec unification t1 t2 =
     | Type.Alias (_, ty1), ty2 -> unification ty1 ty2
     | ty1, Type.Alias (_, ty2) -> unification ty1 ty2
 
-    | ty1, ty2 -> raise (Conflict (ty1, ty2))
+    | ty1, ty2 ->
+      raise (Conflict (ty1, ty2))
 
 and unification_rows row1 row2 =
   let map1, rest1 = Type.compact row1 in
