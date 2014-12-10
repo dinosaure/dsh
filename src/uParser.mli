@@ -1,5 +1,5 @@
-include (module type of Parser
-         with type token = Parser.token)
+include (module type of AParser
+         with type token = AParser.token)
 
 val single_ty :
   ('a -> token * Lexing.position * Lexing.position) -> 'a -> Type.t
