@@ -55,9 +55,9 @@ let reduce (lst, stop) startpos endpos =
     | [ x ] ->
       Ast.Seq (Ast.loc x, x, stop)
     | x :: r ->
-      let start = Ast.loc x |> Location.start in
-      let stop = Ast.loc (List.rev r |> List.hd) |> Location.stop in
-      Ast.Seq (Location.compose start stop, x, aux r)
+      let start = Ast.loc x |> Loc.start in
+      let stop = Ast.loc (List.rev r |> List.hd) |> Loc.stop in
+      Ast.Seq (Loc.compose start stop, x, aux r)
   in aux lst
 
 let expr_record_extend lst rest =
@@ -92,7 +92,7 @@ let ty_row_extend lst rest =
 %token <char> CHAR
 
 %token LPAR RPAR LBRACKET RBRACKET LBRACE RBRACE
-%token SEMICOLON COLON PIPE COMMA EQUAL MARK POINT BACKSLASH
+%token SEMICOLON COLON PIPE COMMA EQUAL MARK POINT BACKSLASH WILDCARD
 %token REC IN ARROW FORALL SOME LAMBDA NULL MATCH TYPE
 %token EOF
 
@@ -125,15 +125,17 @@ ulist(C, X):
 
 exprs:
   | n = LNAME EQUAL e = expr r = exprs
-  { Ast.Let (Location.make $startpos $endpos(e), n, e, r) }
+  { Ast.Let (Loc.make $startpos $endpos(e), n, e, r) }
+  | WILDCARD EQUAL e = expr r = exprs
+  { Ast.Seq (Loc.make $startpos $endpos(e), e, r) }
   | TYPE n = LNAME EQUAL t = ty r = exprs
-  { Ast.Alias (Location.make $startpos $endpos, n, t, r) }
+  { Ast.Alias (Loc.make $startpos $endpos, n, t, r) }
   | REC LPAR n = LNAME RPAR EQUAL e = expr r = exprs
-  { Ast.Rec (Location.make $startpos $endpos(e), n, e, r) }
+  { Ast.Rec (Loc.make $startpos $endpos(e), n, e, r) }
   | e = expr r = exprs
-  { Ast.Seq (Location.make $startpos $endpos(e), e, r) }
+  { Ast.Seq (Loc.make $startpos $endpos(e), e, r) }
   | EOF
-  { Ast.Unit (Location.make $startpos $endpos) }
+  { Ast.Unit (Loc.make $startpos $endpos) }
 
 single_expr:
   | a = expr EOF
@@ -145,55 +147,57 @@ single_ty:
 
 expr:
   | n = LNAME EQUAL e = expr IN c = expr
-  { Ast.Let (Location.make $startpos $endpos, n, e, c) }
+  { Ast.Let (Loc.make $startpos $endpos, n, e, c) }
+  | WILDCARD EQUAL e = expr IN c = expr
+  { Ast.Seq (Loc.make $startpos $endpos, e, c) }
   | TYPE n = LNAME EQUAL t = ty IN c = expr
-  { Ast.Alias (Location.make $startpos $endpos, n, t, c) }
+  { Ast.Alias (Loc.make $startpos $endpos, n, t, c) }
   | REC LPAR n = LNAME RPAR EQUAL e = expr IN c = expr
-  { Ast.Rec (Location.make $startpos $endpos, n, e, c) }
+  { Ast.Rec (Loc.make $startpos $endpos, n, e, c) }
   | LAMBDA l = param+ POINT e = expr
-  { Ast.Abs (Location.make $startpos $endpos, l, e) }
+  { Ast.Abs (Loc.make $startpos $endpos, l, e) }
   | MATCH e = expr LBRACE PIPE? l = ulist(PIPE, branch) RBRACE
-  { Ast.Case (Location.make $startpos $endpos, e, l) }
+  { Ast.Case (Loc.make $startpos $endpos, e, l) }
   | x = expr_atom
   { x }
   | x = expr_mark
   { x }
   | x = expr_atom COLON ty = ann
-  { Ast.Ann (Location.make $startpos $endpos, x, ty) }
+  { Ast.Ann (Loc.make $startpos $endpos, x, ty) }
 
 expr_atom:
   | i = NUMBER
-  { Ast.Int (Location.make $startpos $endpos, i) }
+  { Ast.Int (Loc.make $startpos $endpos, i) }
   | b = BOOL
-  { Ast.Bool (Location.make $startpos $endpos, b) }
+  { Ast.Bool (Loc.make $startpos $endpos, b) }
   | c = CHAR
-  { Ast.Char (Location.make $startpos $endpos, c) }
+  { Ast.Char (Loc.make $startpos $endpos, c) }
   | NULL
-  { Ast.Unit (Location.make $startpos $endpos) }
+  { Ast.Unit (Loc.make $startpos $endpos) }
   | n = LNAME
-  { Ast.Var (Location.make $startpos $endpos, n) }
+  { Ast.Var (Loc.make $startpos $endpos, n) }
   | LPAR e = expr RPAR
   { e }
   | LBRACE RBRACE
-  { Ast.RecordEmpty (Location.make $startpos $endpos) }
+  { Ast.RecordEmpty (Loc.make $startpos $endpos) }
   | LBRACE l = expr_record PIPE r = expr RBRACE
-  { let pos = Location.make $startpos $endpos in
+  { let pos = Loc.make $startpos $endpos in
     let map, rest = expr_record_extend l r in
     Ast.RecordExtend (pos, map, rest) }
   | LBRACE l = expr_record RBRACE
-  { let pos = Location.make $startpos $endpos in
+  { let pos = Loc.make $startpos $endpos in
     let map, rest = expr_record_extend l (Ast.RecordEmpty pos) in
     Ast.RecordExtend (pos, map, rest) }
   | LBRACE x = expr BACKSLASH n = LNAME RBRACE
-  { Ast.RecordRestrict (Location.make $startpos $endpos, x, n) }
+  { Ast.RecordRestrict (Loc.make $startpos $endpos, x, n) }
   | x = expr_atom POINT n = LNAME
-  { Ast.RecordSelect (Location.make $startpos $endpos, x, n) }
+  { Ast.RecordSelect (Loc.make $startpos $endpos, x, n) }
   | x = expr_app
   { x }
   | x = expr_variant
   { x }
   | LPAR l = expr_tuple RPAR
-  { Ast.Tuple (Location.make $startpos $endpos, l) }
+  { Ast.Tuple (Loc.make $startpos $endpos, l) }
   | LPAR a = expr_infix RPAR
   { a }
   | LPAR s = expr_seq RPAR
@@ -201,13 +205,13 @@ expr_atom:
 
 expr_variant:
   | n = UNAME LPAR e = expr RPAR
-  { Ast.Variant (Location.make $startpos $endpos, n, e) }
+  { Ast.Variant (Loc.make $startpos $endpos, n, e) }
   | n = UNAME LPAR RPAR
-  { let pos = Location.make $startpos $endpos in
+  { let pos = Loc.make $startpos $endpos in
     Ast.Variant (pos, n, Ast.Unit pos)}
   | n = UNAME LPAR l = expr_tuple RPAR
-  { let e = Ast.Tuple (Location.make $startpos(l) $endpos(l), l) in
-    Ast.Variant (Location.make $startpos $endpos, n, e) }
+  { let e = Ast.Tuple (Loc.make $startpos(l) $endpos(l), l) in
+    Ast.Variant (Loc.make $startpos $endpos, n, e) }
 
 expr_tuple:
   | x = expr_atom COMMA r = expr_tuple
@@ -217,17 +221,17 @@ expr_tuple:
 
 expr_infix:
   | a = expr_atom o = LNAME b = expr_infix
-  { let op = Ast.Var (Location.make $startpos(o) $endpos(o), o) in
-    Ast.App (Location.make $startpos $endpos, op, [a; b]) }
+  { let op = Ast.Var (Loc.make $startpos(o) $endpos(o), o) in
+    Ast.App (Loc.make $startpos $endpos, op, [a; b]) }
   | a = expr_atom o = LNAME b = expr_atom
-  { let op = Ast.Var (Location.make $startpos(o) $endpos(o), o) in
-    Ast.App (Location.make $startpos $endpos, op, [a; b]) }
+  { let op = Ast.Var (Loc.make $startpos(o) $endpos(o), o) in
+    Ast.App (Loc.make $startpos $endpos, op, [a; b]) }
 
 expr_seq:
   | a = expr_atom SEMICOLON b = expr_seq
-  { Ast.Seq (Location.make $startpos $endpos, a, b) }
+  { Ast.Seq (Loc.make $startpos $endpos, a, b) }
   | a = expr_atom SEMICOLON b = expr_atom
-  { Ast.Seq (Location.make $startpos $endpos, a, b) }
+  { Ast.Seq (Loc.make $startpos $endpos, a, b) }
 
 expr_record:
   | n = LNAME EQUAL e = expr
@@ -237,9 +241,9 @@ expr_record:
 
 expr_app:
   | f = expr_atom LBRACKET a = expr_arg RBRACKET
-  { Ast.App (Location.make $startpos $endpos, f, a) }
+  { Ast.App (Loc.make $startpos $endpos, f, a) }
   | f = expr_atom LBRACKET RBRACKET
-  { Ast.App (Location.make $startpos $endpos, f, []) }
+  { Ast.App (Loc.make $startpos $endpos, f, []) }
 
 expr_arg:
   | x = expr
@@ -249,35 +253,37 @@ expr_arg:
 
 expr_mark:
   | i = expr_atom MARK a = expr PIPE b = expr
-  { Ast.If (Location.make $startpos $endpos, i, a, b) }
+  { Ast.If (Loc.make $startpos $endpos, i, a, b) }
 
 branch:
-  | p = pattern ARROW e = expr
+  | p = pattern  ARROW e = expr
   { (p, e) }
 
 pattern:
   | n = UNAME LPAR RPAR
-  { let pos = Location.make $startpos $endpos in
+  { let pos = Loc.make $startpos $endpos in
     Pattern.Variant (pos, n, Pattern.Unit pos) }
   | n = UNAME LPAR p = pattern RPAR
-  { Pattern.Variant (Location.make $startpos $endpos, n, p) }
+  { Pattern.Variant (Loc.make $startpos $endpos, n, p) }
   | n = UNAME LPAR l = pattern_tuple RPAR
-  { let p = Pattern.Tuple (Location.make $startpos(l) $endpos(l), l) in
-    Pattern.Variant (Location.make $startpos $endpos, n, p) }
+  { let p = Pattern.Tuple (Loc.make $startpos(l) $endpos(l), l) in
+    Pattern.Variant (Loc.make $startpos $endpos, n, p) }
   | n = LNAME
-  { Pattern.Var (Location.make $startpos $endpos, n) }
+  { Pattern.Var (Loc.make $startpos $endpos, n) }
   | i = NUMBER
-  { Pattern.Int (Location.make $startpos $endpos, i) }
+  { Pattern.Int (Loc.make $startpos $endpos, i) }
   | b = BOOL
-  { Pattern.Bool (Location.make $startpos $endpos, b) }
+  { Pattern.Bool (Loc.make $startpos $endpos, b) }
   | c = CHAR
-  { Pattern.Char (Location.make $startpos $endpos, c) }
+  { Pattern.Char (Loc.make $startpos $endpos, c) }
   | NULL
-  { Pattern.Unit (Location.make $startpos $endpos) }
+  { Pattern.Unit (Loc.make $startpos $endpos) }
   | LPAR x = pattern RPAR
   { x }
+  | WILDCARD
+  { Pattern.Any (Loc.make $startpos($1) $endpos($1)) }
   | LPAR l = pattern_tuple RPAR
-  { Pattern.Tuple (Location.make $startpos $endpos, l) }
+  { Pattern.Tuple (Loc.make $startpos $endpos, l) }
 
 pattern_tuple:
   | x = pattern COMMA r = pattern
