@@ -5,6 +5,249 @@ module Environment = struct
   let lookup env name = find name env
 end
 
+module TPattern = struct
+  type t =
+    | Var of (string * Type.t option ref)
+    | Any of Type.t option ref
+    | Variant of (string * t * Type.t option ref)
+    | Tuple of (t list * Type.t option ref)
+    | Int of int
+    | Char of char
+    | Bool of bool
+    | Unit
+
+  module Buffer = struct
+    include Buffer
+
+    let add_list ?(sep="") add_data buffer lst =
+      let rec aux = function
+        | [] -> ()
+        | [ x ] -> add_data buffer x
+        | x :: r ->
+          Printf.bprintf buffer "%a%s" add_data x sep; aux r
+      in aux lst
+  end
+
+  let to_string a =
+    let buffer = Buffer.create 16 in
+    let rec compute buffer = function
+      | Var (name, _) -> Buffer.add_string buffer name
+      | Any _ -> Buffer.add_string buffer "_"
+      | Variant (name, Unit, _) ->
+        Printf.bprintf buffer "%s()" name
+      | Variant (name, expr, _) ->
+        Printf.bprintf buffer "%s(%a)"
+          name
+          compute expr
+      | Tuple (_, l) ->
+        raise (Failure "Not implemented")
+      | Int i ->
+        Printf.bprintf buffer "%d" i
+      | Char c ->
+        Printf.bprintf buffer "%c" c
+      | Bool b ->
+        Printf.bprintf buffer "%b" b
+      | Unit -> Buffer.add_string buffer "ø"
+    in compute buffer a; Buffer.contents buffer
+
+  (** Attach the type with the pattern, after a [compute_pattern] this function
+      should not raise an exception. *)
+  let rec of_pattern ty pss = match Type.unlink ty, pss with
+    | ty, Pattern.Var (_, name) -> Var (name, ref (Some ty))
+    | ty, Pattern.Any _ -> Any (ref (Some ty))
+    | Type.App (Type.Const "tuple", tys), Pattern.Tuple (_, pss) ->
+      Tuple (List.map2 of_pattern tys pss, ref (Some ty))
+    | Type.Const "int", Pattern.Int (_, i) -> Int i
+    | Type.Const "char", Pattern.Char (_, c) -> Char c
+    | Type.Const "bool", Pattern.Bool (_, b) -> Bool b
+    | Type.Const "unit", Pattern.Unit _ -> Unit
+    | Type.Variant ty, Pattern.Variant (_, name, pss) ->
+      let (map, rest) = Type.compact ty in
+      begin try let tys = Type.Set.find name map in
+          Variant (name, of_pattern (List.hd tys) pss, ref (Some ty))
+          (** XXX: List.hd is right ? *)
+        with Not_found -> raise (Invalid_argument "Synthesis.TPattern.of_pattern")
+      end
+    | _ ->
+      raise (Invalid_argument "Synthesis.TPattern.of_pattern")
+
+  let omega = Any (ref None)
+  let rec omegas i = if i <= 0 then [] else omega :: (omegas (i - 1))
+  let omega_list l = List.map (fun _ -> omega) l
+
+  let zero = Int 0
+
+  (** Normalize a pattern, all arguments are omega (simple pattern) and no more
+      variables.
+  *)
+  let rec normalize q = match q with
+    | Any _ | Int _ | Char _ | Bool _ | Unit -> q
+    | Var (_, ty) -> Any ty
+    | Tuple (l, ty) ->
+      Tuple (omega_list l, ty)
+    | Variant (label, p, ty) ->
+      Variant (label, omega, ty)
+
+  (** Build normalized (eg. [normalize]) discriminating pattern,
+      in the non-data type case.
+  *)
+  let discr_pattern q pss =
+    let rec aux acc pss = match pss with
+      | ((Any _ | Var _) :: _) :: pss ->
+        aux acc pss
+      | (((Tuple _) as p) :: _) :: _ ->
+        normalize p
+      | _ -> acc
+    in
+    match normalize q with
+    | (Any _) as q -> aux q pss
+    | q -> q
+
+  (** Check top matching *)
+  let simple_match p1 p2 = match p1, p2 with
+    | Int i1, Int i2 -> i1 = i2
+    | Char c1, Char c2 -> c1 = c2
+    | Bool b1, Bool b2 -> b1 = b2
+    | Unit, Unit -> true
+    | Variant (l1, _ , _), Variant (l2, _, _) -> l1 = l2
+    | Tuple _, Tuple _ -> true
+    | _, (Any _ | Var _) -> true
+    | _, _ -> false
+
+  (** Build argument list when p2 >= p1, where p1 is a simple pattern *)
+  let simple_match_args p1 p2 = match p2 with
+    | Tuple (args, _) -> args
+    | Variant (_, arg, _) -> [arg]
+    | Var _ | Any _ ->
+      begin match p1 with
+      | Tuple (args, _) -> omega_list args
+      | Variant (_, _, args) -> [omega]
+      | _ -> []
+      end
+    | _ -> []
+
+  (** Pattern p0 is the discriminating pattern,
+      returns [(q0, pss0); ... ; (qn, pssn)]
+      where the qi's are simple pattern and pssi's are
+      matched matrices.
+
+      (qi, []) is impossible
+      In the case when matching is useless (all-variable case),
+      return []
+  *)
+  let filter_all pat0 pss =
+    let rec insert q qs env =
+      match env with
+      | [] ->
+        let q0 = normalize q in
+        [q0, [simple_match_args q0 q @ qs]]
+      | ((q0, pss) as c) :: env ->
+        if simple_match q0 q
+        then (q0, ((simple_match_args q0 q @ qs) :: pss)) :: env
+        else c :: insert q qs env in
+    let rec filter_rec env = function
+      | ((Any _ | Var _) :: _) :: pss ->
+        filter_rec env pss
+      | (p :: ps) :: pss ->
+        filter_rec (insert p ps env) pss
+      | _ -> env
+    and filter_omega env = function
+      | ((Any _ | Var _) :: ps) :: pss ->
+        filter_omega
+          (List.map (fun (q, qss) -> (q, (simple_match_args q omega @ ps) :: qss))
+           env)
+          pss
+      | _ :: pss -> filter_omega env pss
+      | [] -> env in
+    filter_omega
+      (filter_rec
+        (match pat0 with
+         | Tuple _ -> [pat0, []]
+         | _ -> [])
+       pss)
+      pss
+
+  let filter_extra pss =
+    let rec filter_rec = function
+      | ((Any _ | Var _) :: qs) :: pss ->
+        qs :: filter_rec pss
+      | _ :: pss -> filter_rec pss
+      | [] -> []
+    in filter_rec pss
+
+  let full_match try_close env =
+    match env with
+    | (Variant (_, _, { contents = Some ty }), _) :: _ ->
+      (** We try to find all of variants in pattern `env` *)
+      let (row, _) = Type.compact ty in
+      let fields =
+        List.map
+          (function (Variant (tag, _, _), _) -> tag
+                  | _ -> assert false)
+          (** Or, we have `match v { X(ø) → ø | 42 → ø }`,
+              so we must do this after first type-checking *)
+          env
+      in
+      if try_close
+      then Type.Set.for_all (fun tag _ -> List.mem tag fields) row
+        (** We try to test the exhaustiveness of pattern *)
+      else Type.Set.for_all (fun tag _ -> List.mem tag fields) row
+           && Type.is_close ty
+        (** it's [> A | B ] if Type.is_close return false,
+          * so it's not exhaustive *)
+    | (Int _, _) :: _ -> false (* 2^32 is too much *)
+    | (Char _, _) :: _ -> List.length env = 256
+    | (Bool _, _) :: _ -> List.length env = 2
+    | (Tuple _, _) :: _ -> true
+    | (Unit, _) :: _ -> true
+    | _ -> raise (Invalid_argument "Synthesis.TPattern.full_match")
+
+  let rec set_last a = function
+    | [] -> []
+    | [ _ ] -> [ a ]
+    | x :: r -> x :: set_last a r
+
+  let rec mark_partial = function
+    | ((Any _ | Var _) :: _ as ps) :: pss ->
+      ps :: mark_partial pss
+    | ps :: pss ->
+      (set_last zero ps) :: mark_partial pss
+      (** TODO: Why zero ? *)
+    | [] -> []
+
+  let rec pressure_variants ?(def=true) = function
+    | [] -> false
+    | [] :: _ -> true
+    | pss ->
+        let q0 = discr_pattern omega pss in
+        begin match filter_all q0 pss with
+          | [] -> pressure_variants ~def (filter_extra pss)
+          | constrs ->
+            let rec try_non_omega = function
+              | (p, pss) :: rem ->
+                let ok = pressure_variants ~def pss in
+                try_non_omega rem && ok
+              | [] -> true
+            in
+            if full_match false constrs
+            then try_non_omega constrs
+            else if def = false
+              then pressure_variants ~def:false (filter_extra pss)
+            else
+              let full = full_match true constrs in
+              let ok =
+                if full then try_non_omega constrs
+                else try_non_omega (filter_all q0 (mark_partial pss))
+              in
+              begin match constrs with
+                | (Variant (_, _, { contents = Some ty }), _) :: _ ->
+                  if pressure_variants ~def:false (filter_extra pss) then ()
+                  else Type.close_row ty
+                | _ -> ()
+              end; ok
+        end
+end
+
 exception Recursive_type of Type.t
 exception Conflict of (Type.t * Type.t)
 exception Circularity of (Type.t * Type.t)

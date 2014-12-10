@@ -5,6 +5,15 @@ module Environment : sig
   val lookup : Type.t t -> string -> Type.t
 end
 
+module TPattern : sig
+  type t
+
+  val of_pattern : Type.t -> Pattern.t -> t
+  val to_string : t -> string
+
+  val pressure_variants : ?def:bool -> t list list -> bool
+end
+
 exception Recursive_type of Type.t
 exception Conflict of (Type.t * Type.t)
 exception Circularity of (Type.t * Type.t)
