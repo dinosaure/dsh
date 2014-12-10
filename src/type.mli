@@ -19,10 +19,10 @@ end
 
 type t =
   | Const of string                       (* like `int` *)
-  | App of (t * t list)                   (* like `(list int)` *)
-  | Arrow of (t list * t)                 (* like `int -> int` *)
+  | App of (t * t list)                   (* like `[list int]` *)
+  | Arrow of (t list * t)                 (* like `int → int` *)
   | Var of var ref                        (* variable of type *)
-  | Forall of (int list * t)              (* like `(forall (l) t)` *)
+  | Forall of (int list * t)              (* like `∀l. t` *)
   | Alias of (string * t)                 (* alias of type *)
   | Variant of row                        (* like `[ A | B ]` *)
   | Record of row                         (* like `{ a; b }` *)
