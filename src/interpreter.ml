@@ -171,10 +171,11 @@ let rec eval env = function
     (fun () ->
       let value = eval env expr in
       let rec compute_branch = function
-        | (pattern, expr) :: r ->
+        | (branch, expr) :: r ->
           begin
-            try let (names, values) = compute_pattern value pattern
-                                      |> List.split
+            try let (names, values) =
+                compute_pattern value branch
+                |> List.split
                 in eval (Environment.extend env names values) expr
             with _ -> compute_branch r
           end
