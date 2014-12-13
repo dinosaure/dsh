@@ -100,7 +100,9 @@ let rec token ~pos lexbuf =
       UParser.LNAME (ident buffer lexbuf)
   in
   if !jump_lexeme
-  then pos.cnum <- pos.cnum + (String.length (Sedlexing.Utf8.lexeme lexbuf));
+  then pos.cnum <- pos.cnum + (Sedlexing.lexeme_length lexbuf);
+  (* TODO: for the file, we need to get the real size of lexeme with
+   * String.length *)
   token
 
 let transform { lnum; bol; cnum } =
