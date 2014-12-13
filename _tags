@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: 4f43f4e21615e140caf80550f50f2b27)
+# DO NOT EDIT (digest: 2bc385c417e60621e19dcfd1d6cb6cf0)
 # Ignore VCS directories, you can use the same kind of rule outside
 # OASIS_START/STOP if you want to exclude directories that contains
 # useless stuff for the build process
@@ -55,6 +55,12 @@ true: annot, bin_annot
 <test/alias_test.{native,byte}>: pkg_oUnit
 <test/alias_test.{native,byte}>: pkg_sedlex
 <test/alias_test.{native,byte}>: use_dsh
+# Executable test_variant
+<test/variant_test.{native,byte}>: pkg_batteries
+<test/variant_test.{native,byte}>: pkg_menhirLib
+<test/variant_test.{native,byte}>: pkg_oUnit
+<test/variant_test.{native,byte}>: pkg_sedlex
+<test/variant_test.{native,byte}>: use_dsh
 <test/*.ml{,i,y}>: pkg_batteries
 <test/*.ml{,i,y}>: pkg_menhirLib
 <test/*.ml{,i,y}>: pkg_oUnit

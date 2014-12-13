@@ -65,3 +65,17 @@ Test test_alias
   TestTools:             test_alias
   Command:               $test_alias
   WorkingDirectory:      .
+
+Executable test_variant
+  Path:                  test
+  Build$:                flag(tests)
+  Install:               false
+  CompiledObject:        best
+  MainIs:                variant_test.ml
+  BuildDepends:          dsh, oUnit
+
+Test test_variant
+  Run$:                  flag(tests)
+  TestTools:             test_variant
+  Command:               $test_variant
+  WorkingDirectory:      .
