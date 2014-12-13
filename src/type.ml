@@ -203,7 +203,7 @@ let to_string ?(env = Environment.empty) ty =
         with Not_found -> Printf.bprintf buffer "#%d" id
       end
     | Var { contents = Generic id } ->
-      Printf.bprintf buffer "%s" (name_of_unbound id)
+      Printf.bprintf buffer "'%s" (name_of_unbound id)
     | Var { contents = Link ty } -> atom env buffer ty
     | Record t ->
       Printf.bprintf buffer "{%a}" (expr env) t
