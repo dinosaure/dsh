@@ -53,9 +53,9 @@ let tests =
      OK ("bool"));
     ("f = λx.x in equal[f, equal]",
      Fail (Synthesis.Conflict
-             (Type.Arrow ([ Variable.dummy ], Variable.dummy),
-              (Type.Arrow ([ Variable.dummy; Variable.dummy ],
-                           Type.bool)))));
+             (Type.Arrow ([ Variable.dummy; Variable.dummy ],
+                          Type.bool),
+              Type.Arrow ([ Variable.dummy ], Variable.dummy))));
     ("f = λa b. true in equal[f, equal]",
      OK ("bool"));
     ("f = λx.x in equal[f, succ]",
@@ -63,7 +63,7 @@ let tests =
     ("f = λx.x in (f[1], f[true])",
      OK ("tuple[int, bool]"));
     ("λf.(f[1], f[true])",
-     Fail (Synthesis.Conflict (Type.int, Type.bool)));
+     Fail (Synthesis.Conflict (Type.bool, Type.int)));
     ("f = λx y. a = equal[x, y] in equal[x, y] in f",
      OK ("∀a. (a → a → bool)"));
     ("id[id]", OK ("∀a. (a → a)"));
@@ -75,7 +75,7 @@ let tests =
     ("l1 = cons[id, nill] in l2 = cons[succ, nill] in l2",
      OK ("list[int → int]"));
     ("(1 + true)",
-     Fail (Synthesis.Conflict (Type.int, Type.bool)));
+     Fail (Synthesis.Conflict (Type.bool, Type.int)));
     ("+ [1]",
      Fail (Synthesis.Mismatch_arguments
              (Type.Arrow ([Type.int; Type.int],
@@ -109,7 +109,7 @@ let tests =
      OK ("∀a b. (a → b) → a → b"));
     ("ids", OK "list[∀a. a → a]");
     ("λf. (f[1], f[true])",
-     Fail (Synthesis.Conflict (Type.int, Type.bool)));
+     Fail (Synthesis.Conflict (Type.bool, Type.int)));
     ("λf : ∀a. a → a. (f[true], f[1])",
      OK ("(∀a. a → a) → tuple[bool, int]"));
     ("cons[ids, nill]", OK ("list[list[∀a. a → a]]"));
