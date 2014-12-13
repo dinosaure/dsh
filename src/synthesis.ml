@@ -632,8 +632,6 @@ let specialization level ty =
       substitution ids lst ty
     | Type.Var { contents = Type.Link ty } -> aux level ty
     | Type.Alias (name, ty) -> Type.Alias (name, aux level ty)
-    | Type.RowExtend (map, rest) ->
-      Type.RowExtend (Type.Set.map (List.map (aux level)) map, aux level rest)
     | ty -> ty
   in aux level ty
 
