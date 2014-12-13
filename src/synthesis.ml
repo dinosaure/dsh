@@ -718,15 +718,15 @@ let rec compute_function n = function
     @raise No_instance if [ty1] is not an instance of [ty2]
 *)
 let subsume ~gamma ~level ty1 ty2 =
-  let ty2' = specialization level ty2 in
-  match Type.unlink ty1 with
-  | Type.Forall (ids, ty1) as forall ->
+  let ty1' = specialization level ty1 in
+  match Type.unlink ty2 with
+  | Type.Forall (ids, ty2) as forall ->
     let lst = List.rev_map (fun _ -> Type.Variable.generic ()) ids in
-    let ty1' = substitution ids lst ty1 in
-    unification ty1' ty2';
-    if union lst forall ty2
-    then raise (No_instance (ty1, ty2))
-  | ty1 -> unification ty1 ty2'
+    let ty2' = substitution ids lst ty2 in
+    unification ty2' ty1';
+    if union lst forall ty1
+    then raise (No_instance (ty1, forall))
+  | ty2 -> unification ty1' ty2
 
 let ( >!= ) func handle_error =
   try func () with
@@ -845,7 +845,7 @@ let rec eval
        let _, ty_normalized =
          specialization_annotation level (lst, ty_normalized) in
        let e' = eval ~gamma ~env ~level e in
-       subsume ~gamma ~level ty_normalized e';
+       subsume ~gamma ~level e' ty_normalized;
        ty_normalized)
     >!= raise_with_loc loc
   | Ast.If (loc, i, a, b) ->
@@ -989,8 +989,8 @@ and compute_argument gamma env level tys a =
     (fun (ty, a) ->
        let ty' = eval ~gamma ~env ~level a in
        if Ast.is_annotated a
-       then unification ty ty'
-       else subsume ~gamma ~level ty ty')
+       then unification ty' ty
+       else subsume ~gamma ~level ty' ty)
     slst
 
 and compute_pattern gamma lst level = function
