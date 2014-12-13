@@ -802,7 +802,7 @@ let rec eval
        let ft_normalized = specialization (level + 1) ft_normalized in
        let a', r' = compute_function (List.length a) ft_normalized in
        compute_argument gamma env (level + 1) a' a;
-       generalization level (specialization (level + 1) r'))
+       specialization (level + 1) r')
     >!= raise_with_loc loc
   | Ast.Let (loc, n, e, c) ->
     (fun () ->
