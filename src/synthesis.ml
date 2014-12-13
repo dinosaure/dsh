@@ -632,6 +632,7 @@ let specialization level ty =
       substitution ids lst ty
     | Type.Var { contents = Type.Link ty } -> aux level ty
     | Type.Alias (name, ty) -> Type.Alias (name, aux level ty)
+    (** XXX: check this ^ *)
     | ty -> ty
   in aux level ty
 
@@ -697,10 +698,10 @@ let rec compute_function n = function
     lst, r
   | _ as ty -> raise (Expected_function ty)
 
-(** subsume : takes two types [ty1] [ty2] and determines if [ty1] is an of
-    [ty2]. For example, `int → int` is an instance of `∀a. a → a` (the type of
-    `id`) which in turn is an instance of `∀a b. a → b` (type of `magic`). This
-    means that we can pass `id` as an argument to a function expecting
+(** subsume : takes two types [ty1] [ty2] and determines if [ty1] is an instance
+    of [ty2]. For example, `int → int` is an instance of `∀a. a → a` (the type
+    of `id`) which in turn is an instance of `∀a b. a → b` (type of `magic`).
+    This means that we can pass `id` as an argument to a function expecting
     `int → int` and we can pass `magic` to a function expecing `∀a. a → a` but
     not the other way round. To determine if [ty1] is an instance of [ty2],
     [subsume] first instantiates [ty2], the more general type, with `Unbound`
@@ -913,8 +914,9 @@ let rec eval
          unification rt rt'
        in
        List.iter compute_branch pattern;
-       let (ty, pss) = make_matrix ty (List.map fst pattern) in
-       ignore (TPattern.pressure_variants pss);
+       let (ty', pss) = make_matrix ty (List.map fst pattern) in
+       let _ = TPattern.pressure_variants pss in
+       (* TODO: test exhaustiveness of pattern and print warning *)
        rt)
     >!= raise_with_loc loc
 
