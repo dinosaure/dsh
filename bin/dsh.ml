@@ -24,14 +24,11 @@ let interpret expr =
         (stop lexbuf)
     in Printf.sprintf "Lexical error at:\n%s%!"
       (Loc.to_string_of_line loc expr)
-  | Synthesis.Error (loc, _) as exn ->
+  | Synthesis.Error (loc, exn) ->
     Printf.sprintf "Typing error: %s at:\n%s%!"
       (Printexc.to_string exn)
       (Loc.to_string_of_line loc expr)
-  | Synthesis.Conflict _ ->
-    Printf.sprintf "Backtrace:\n%s%!"
-      (Printexc.get_backtrace ())
-  | Interpreter.Error (loc, _) as exn ->
+  | Interpreter.Error (loc, exn) ->
     Printf.sprintf "Interpreter error: %s at:\n%s%!"
       (Printexc.to_string exn)
       (Loc.to_string_of_line loc expr)
