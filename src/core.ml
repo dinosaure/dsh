@@ -151,3 +151,4 @@ let runtime =
                           | _ -> raise_error "bln")
   |> add "chr"    (function [Char a] -> print_string (String.make 1 a); Unit
                           | _ -> raise_error "chr")
+  |> Environment.add "any"  Unit
