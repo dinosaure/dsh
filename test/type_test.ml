@@ -216,6 +216,8 @@ let rec compare r1 r2 =
   let open Synthesis in
   match r1, r2 with
   | OK ty1, OK ty2 -> (normalize ty1) = (normalize ty2)
+  | OK ty1, Output ty2
+  | Output ty1, OK ty2
   | Output ty1, Output ty2 -> ty1 = ty2
   | Fail (Error (_, exn1)), Fail exn2
   | Fail exn1, Fail (Error (_, exn2)) ->
