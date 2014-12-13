@@ -9,8 +9,8 @@ let interpret expr =
   try
     let tree = UParser.single_expr token lexbuf in
     let ty = Synthesis.eval ~env:Core.core tree in
-    let rt = Interpreter.eval Core.runtime tree in
-    Printf.sprintf "%s : %s" (Interpreter.to_string rt) (Type.to_string ty)
+    (* let rt = Interpreter.eval Core.runtime tree in *)
+    Printf.sprintf "# : %s" (* Interpreter.to_string rt *) (Type.to_string ty)
   with
   | UParser.Error ->
     let loc = Loc.make
