@@ -189,6 +189,10 @@ let tests =
      OK ("∀a b.(∀c d. c → d) → a → b → bool"));
     ("Y(fib) = λn. match n { 0 → 1 | 1 → 1 | n → (fib[(n - 1)] + fib[(n - 2)])}
       in fib", OK ("int → int"));
+    ("l = f = λx. cons[id, cons[x, nill]]
+      in f[(λx. x) : ∃a. (a → a) → (a → a)]
+      in head[l][id][42]",
+     OK ("int"));
   ]
 
 let to_string = function
