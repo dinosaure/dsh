@@ -37,7 +37,11 @@ end
 
 let tests =
   [
+    ("A()", Output "∀a. [A : unit | a]");
     ("X(1)", Output "∀a. [X : int | a]");
+    ("cons[A(), cons[X(1), nill]]", Output "∀a. list[[A : unit | X : int | a]]");
+    ("λe. match e { A() → 0 | X(i) → i }",
+     Output "[A : unit | X : int] → int");
     ("choose[choose[A(1), B(true)], choose[C(false), D(nill)]]",
      Output "∀a. [A : int | B : bool | C : bool | D : ∀b. list[b] | a]");
     ("choose[A(true), A(1)]",
