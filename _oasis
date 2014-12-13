@@ -7,6 +7,10 @@ License:                 MIT
 Plugins:                 META (0.4), DevFiles (0.4)
 BuildTools:              ocamlbuild
 AlphaFeatures:           ocamlbuild_more_args
+XOCamlbuildPluginTags:   package(js_of_ocaml.ocamlbuild)
+OCamlVersion:            >= 4.01
+
+## Library ##
 
 Library dsh
   Path:                  src
@@ -14,27 +18,50 @@ Library dsh
                          Type, Gamma, Synthesis, Core, Interpreter
   BuildDepends:          batteries, menhirLib, sedlex
 
-Document "dsh"
+## Documentation ##
+
+Document dsh
   Type:                  ocamlbuild (0.4)
   BuildTools:            ocamldoc
-  Title:                 "dsh"
+  Title:                 dsh
   PostCommand:           cp dsh.docdir/*.html doc/
   XOCamlbuildPath:       src
   XOCamlbuildLibraries:  dsh
   XOCamlbuildExtraArgs:
     "-docflags '-colorize-code -keep-code -charset utf-8'"
 
-Executable "top"
-  Path:                  top
-  MainIs:                top.ml
-  BuildDepends:          compiler-libs.toplevel, threads, utop
-  ByteOpt:               -linkpkg -linkall -predicates create_toploop
-  NativeOpt:             -linkpkg -linkall -predicates create_toploop
+## Unix Toplevel ##
 
 Executable dsh
+  Install:               false
+  CompiledObject:        best
   Path:                  bin
   MainIs:                dsh.ml
   BuildDepends:          dsh, lwt.ppx, lambda-term
+
+## Web Toplevel ##
+
+Executable djs
+  Install:               false
+  Path:                  web
+  MainIs:                dsh.ml
+  CompiledObject:        byte
+  BuildDepends:          dsh, lwt.syntax, js_of_ocaml, js_of_ocaml.syntax
+
+Executable index
+  Install:               false
+  Path:                  web
+  MainIs:                index.ml
+  CompiledObject:        best
+  BuildDepends:          tyxml, cmdliner
+
+Test generate
+  Run:                   true
+  Command:
+    jsoo_minify web/dsh.js -o dsh.js && \
+    $index -s dsh.js > index.html
+  TestTools:             index
+  WorkingDirectory:      _build
 
 ## Test ##
 

@@ -6,4 +6,9 @@ B _build/src
 B _build/bin
 B _build/test
 
-PKG batteries oUnit ocamlbuild sedlex menhirLib lambda-term react utop
+EXT js
+EXT lwt
+
+REC
+
+PKG batteries oUnit ocamlbuild sedlex menhirLib lambda-term react utop js_of_ocaml js_of_ocaml.syntax tyxml cmdliner

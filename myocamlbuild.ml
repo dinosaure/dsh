@@ -1,5 +1,5 @@
 (* OASIS_START *)
-(* DO NOT EDIT (digest: 17f7156bd3f117e3c0316d392a5c8e18) *)
+(* DO NOT EDIT (digest: 22a525df6d4f44df6c2f92ca1f161a51) *)
 module OASISGettext = struct
 (* # 22 "src/oasis/OASISGettext.ml" *)
 
@@ -609,76 +609,8 @@ let package_default =
   {
      MyOCamlbuildBase.lib_ocaml = [("dsh", ["src"], [])];
      lib_c = [];
-     flags =
-       [
-          (["oasis_executable_top_byte"; "ocaml"; "link"; "byte"],
-            [
-               (OASISExpr.EBool true,
-                 S
-                   [
-                      A "-linkpkg";
-                      A "-linkall";
-                      A "-predicates";
-                      A "create_toploop"
-                   ])
-            ]);
-          (["oasis_executable_top_native"; "ocaml"; "link"; "native"],
-            [
-               (OASISExpr.EBool true,
-                 S
-                   [
-                      A "-linkpkg";
-                      A "-linkall";
-                      A "-predicates";
-                      A "create_toploop"
-                   ])
-            ]);
-          (["oasis_executable_top_byte"; "ocaml"; "ocamldep"; "byte"],
-            [
-               (OASISExpr.EBool true,
-                 S
-                   [
-                      A "-linkpkg";
-                      A "-linkall";
-                      A "-predicates";
-                      A "create_toploop"
-                   ])
-            ]);
-          (["oasis_executable_top_native"; "ocaml"; "ocamldep"; "native"],
-            [
-               (OASISExpr.EBool true,
-                 S
-                   [
-                      A "-linkpkg";
-                      A "-linkall";
-                      A "-predicates";
-                      A "create_toploop"
-                   ])
-            ]);
-          (["oasis_executable_top_byte"; "ocaml"; "compile"; "byte"],
-            [
-               (OASISExpr.EBool true,
-                 S
-                   [
-                      A "-linkpkg";
-                      A "-linkall";
-                      A "-predicates";
-                      A "create_toploop"
-                   ])
-            ]);
-          (["oasis_executable_top_native"; "ocaml"; "compile"; "native"],
-            [
-               (OASISExpr.EBool true,
-                 S
-                   [
-                      A "-linkpkg";
-                      A "-linkall";
-                      A "-predicates";
-                      A "create_toploop"
-                   ])
-            ])
-       ];
-     includes = [("test", ["src"]); ("bin", ["src"])]
+     flags = [];
+     includes = [("web", ["src"]); ("test", ["src"]); ("bin", ["src"])]
   }
   ;;
 
@@ -686,6 +618,16 @@ let conf = {MyOCamlbuildFindlib.no_automatic_syntax = false}
 
 let dispatch_default = MyOCamlbuildBase.dispatch_default conf package_default;;
 
-# 690 "myocamlbuild.ml"
+# 622 "myocamlbuild.ml"
 (* OASIS_STOP *)
-Ocamlbuild_plugin.dispatch dispatch_default;;
+
+let () = flag ["js_of_ocaml"] (A "+nat.js")
+let () = flag ["js_of_ocaml"] (A "+weak.js")
+
+let () = mark_tag_used "tests"
+
+let () = dispatch
+  (fun hook ->
+    dispatch_default hook;
+    Ocamlbuild_js_of_ocaml.dispatcher
+      ~oasis_executables:["web/dsh.byte"] hook)

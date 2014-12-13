@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: 2bc385c417e60621e19dcfd1d6cb6cf0)
+# DO NOT EDIT (digest: b69a7f5f4bd8cbad94239078efe6f005)
 # Ignore VCS directories, you can use the same kind of rule outside
 # OASIS_START/STOP if you want to exclude directories that contains
 # useless stuff for the build process
@@ -16,55 +16,64 @@ true: annot, bin_annot
 "_darcs": not_hygienic
 # Library dsh
 "src/dsh.cmxs": use_dsh
-<src/*.ml{,i,y}>: pkg_batteries
-<src/*.ml{,i,y}>: pkg_menhirLib
-<src/*.ml{,i,y}>: pkg_sedlex
-# Executable top
-"top/top.byte": oasis_executable_top_byte
-<top/*.ml{,i,y}>: oasis_executable_top_byte
-"top/top.byte": oasis_executable_top_native
-<top/*.ml{,i,y}>: oasis_executable_top_native
-"top/top.byte": pkg_compiler-libs.toplevel
-"top/top.byte": pkg_threads
-"top/top.byte": pkg_utop
-<top/*.ml{,i,y}>: pkg_compiler-libs.toplevel
-<top/*.ml{,i,y}>: pkg_threads
-<top/*.ml{,i,y}>: pkg_utop
+<src/*.ml{,i,y}>: package(batteries)
+<src/*.ml{,i,y}>: package(menhirLib)
+<src/*.ml{,i,y}>: package(sedlex)
 # Executable dsh
-"bin/dsh.byte": pkg_batteries
-"bin/dsh.byte": pkg_lambda-term
-"bin/dsh.byte": pkg_lwt.ppx
-"bin/dsh.byte": pkg_menhirLib
-"bin/dsh.byte": pkg_sedlex
-"bin/dsh.byte": use_dsh
-<bin/*.ml{,i,y}>: pkg_batteries
-<bin/*.ml{,i,y}>: pkg_lambda-term
-<bin/*.ml{,i,y}>: pkg_lwt.ppx
-<bin/*.ml{,i,y}>: pkg_menhirLib
-<bin/*.ml{,i,y}>: pkg_sedlex
+<bin/dsh.{native,byte}>: package(batteries)
+<bin/dsh.{native,byte}>: package(lambda-term)
+<bin/dsh.{native,byte}>: package(lwt.ppx)
+<bin/dsh.{native,byte}>: package(menhirLib)
+<bin/dsh.{native,byte}>: package(sedlex)
+<bin/dsh.{native,byte}>: use_dsh
+<bin/*.ml{,i,y}>: package(batteries)
+<bin/*.ml{,i,y}>: package(lambda-term)
+<bin/*.ml{,i,y}>: package(lwt.ppx)
+<bin/*.ml{,i,y}>: package(menhirLib)
+<bin/*.ml{,i,y}>: package(sedlex)
 <bin/*.ml{,i,y}>: use_dsh
+# Executable djs
+"web/dsh.byte": package(batteries)
+"web/dsh.byte": package(js_of_ocaml)
+"web/dsh.byte": package(js_of_ocaml.syntax)
+"web/dsh.byte": package(lwt.syntax)
+"web/dsh.byte": package(menhirLib)
+"web/dsh.byte": package(sedlex)
+"web/dsh.byte": use_dsh
+<web/*.ml{,i,y}>: package(batteries)
+<web/*.ml{,i,y}>: package(js_of_ocaml)
+<web/*.ml{,i,y}>: package(js_of_ocaml.syntax)
+<web/*.ml{,i,y}>: package(lwt.syntax)
+<web/*.ml{,i,y}>: package(menhirLib)
+<web/*.ml{,i,y}>: package(sedlex)
+<web/*.ml{,i,y}>: use_dsh
+# Executable index
+<web/index.{native,byte}>: package(cmdliner)
+<web/index.{native,byte}>: package(tyxml)
+<web/*.ml{,i,y}>: package(cmdliner)
+<web/*.ml{,i,y}>: package(tyxml)
 # Executable test_type
-<test/type_test.{native,byte}>: pkg_batteries
-<test/type_test.{native,byte}>: pkg_menhirLib
-<test/type_test.{native,byte}>: pkg_oUnit
-<test/type_test.{native,byte}>: pkg_sedlex
+<test/type_test.{native,byte}>: package(batteries)
+<test/type_test.{native,byte}>: package(menhirLib)
+<test/type_test.{native,byte}>: package(oUnit)
+<test/type_test.{native,byte}>: package(sedlex)
 <test/type_test.{native,byte}>: use_dsh
 # Executable test_alias
-<test/alias_test.{native,byte}>: pkg_batteries
-<test/alias_test.{native,byte}>: pkg_menhirLib
-<test/alias_test.{native,byte}>: pkg_oUnit
-<test/alias_test.{native,byte}>: pkg_sedlex
+<test/alias_test.{native,byte}>: package(batteries)
+<test/alias_test.{native,byte}>: package(menhirLib)
+<test/alias_test.{native,byte}>: package(oUnit)
+<test/alias_test.{native,byte}>: package(sedlex)
 <test/alias_test.{native,byte}>: use_dsh
 # Executable test_variant
-<test/variant_test.{native,byte}>: pkg_batteries
-<test/variant_test.{native,byte}>: pkg_menhirLib
-<test/variant_test.{native,byte}>: pkg_oUnit
-<test/variant_test.{native,byte}>: pkg_sedlex
+<test/variant_test.{native,byte}>: package(batteries)
+<test/variant_test.{native,byte}>: package(menhirLib)
+<test/variant_test.{native,byte}>: package(oUnit)
+<test/variant_test.{native,byte}>: package(sedlex)
 <test/variant_test.{native,byte}>: use_dsh
-<test/*.ml{,i,y}>: pkg_batteries
-<test/*.ml{,i,y}>: pkg_menhirLib
-<test/*.ml{,i,y}>: pkg_oUnit
-<test/*.ml{,i,y}>: pkg_sedlex
+<test/*.ml{,i,y}>: package(batteries)
+<test/*.ml{,i,y}>: package(menhirLib)
+<test/*.ml{,i,y}>: package(oUnit)
+<test/*.ml{,i,y}>: package(sedlex)
 <test/*.ml{,i,y}>: use_dsh
 # OASIS_STOP
 
