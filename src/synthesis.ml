@@ -912,6 +912,15 @@ let rec eval
        let (ty', pss) = make_matrix ty (List.map fst pattern) in
        let _ = TPattern.pressure_variants pss in
        (* TODO: test exhaustiveness of pattern and print warning *)
+       (* XXX: I think, we close the polymorphic variant too early
+          because this test:
+
+          `f = λx. match x { A() → 0 }
+           in g = λx. match x { A() → true | B() → false }
+           in λx. (f[x], g[x])` fail in dsh (but not in OCaml).
+
+          The question stay open but the composition of function with
+          polymorphic variant is limited with this. *)
        rt)
     >!= raise_with_loc loc
 
