@@ -863,21 +863,7 @@ let rec eval
        let b' = eval ~gamma ~env ~level b in
        unification i' Type.bool;
        unification a' b';
-
-       (** In the case of a variant, conditional branching must bound the
-           variant like this:
-           > true ? A() | B()
-           [ A : unit, B : unit | _a ] to [ A : unit, B : unit ]
-
-           Both variants can be bounded only if their variables are the same
-           after the unification. Otherwise, there is a type error.
-
-           XXX: It's wrong !
-           echo 'if true then `A else `B;;' | ocaml
-           - : [> `A | `B ] = `A
-       *)
-
-       let (ret, _) = Type.bound a' b' in ret)
+       a' (* or b' *))
     >!= raise_with_loc loc
   | Ast.Seq (loc, a, b) ->
     (fun () ->
