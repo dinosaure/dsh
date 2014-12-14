@@ -39,8 +39,9 @@ module TPattern = struct
         Printf.bprintf buffer "%s(%a)"
           name
           compute expr
-      | Tuple (_, l) ->
-        raise (Failure "Not implemented")
+      | Tuple (l, _) ->
+        Printf.bprintf buffer "%a"
+          (Buffer.add_list ~sep:", " compute) l
       | Int i ->
         Printf.bprintf buffer "%d" i
       | Char c ->
