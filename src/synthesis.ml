@@ -712,9 +712,9 @@ let rec compute_function n = function
     This means that we can pass `id` as an argument to a function expecting
     `int → int` and we can pass `magic` to a function expecing `∀a. a → a` but
     not the other way round. To determine if [ty1] is an instance of [ty2],
-    [subsume] first instantiates [ty2], the more general type, with `Unbound`
-    type varibales. If [ty1] is not polymorphic, is simply unifies the two
-    types. Otherwise, it instantiates [ty1] with `Generic` type variables and
+    [subsume] first instantiates [ty1], the more general type, with `Unbound`
+    type varibales. If [ty2] is not polymorphic, is simply unifies the two
+    types. Otherwise, it instantiates [ty2] with `Generic` type variables and
     unifies both instantiated types. If unification success, we check that no
     generic variables escapes (see [union]).
 
