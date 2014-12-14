@@ -259,6 +259,7 @@ exception Polymorphic_argument_inferred of Type.t list
 exception No_instance of (Type.t * Type.t)
 exception Unknown_type of string
 exception Unbound_constructor of string
+exception No_label of string
 exception Error of (Loc.t * exn)
 
 let () = Printexc.register_printer
@@ -292,6 +293,8 @@ let () = Printexc.register_printer
           Some (Printf.sprintf "unknown type %s" name)
       | Unbound_constructor name ->
           Some (Printf.sprintf "unbound constructor %s" name)
+      | No_label label ->
+          Some (Printf.sprintf "row does not contain label %s" label)
       | Error (loc, exn) ->
           Some (Printf.sprintf "Typing error: %s at %s"
                 (Printexc.to_string exn)
@@ -487,6 +490,7 @@ let rec expand ~gamma ty =
     @raise Circularity if [ty1] is dependent with [ty2]
     @raise Variable_no_instantiated if found `Bound` type variable. Indeed, it's
     normally impossible after a substitution by `Forall` normalized expression.
+    @raise No_label if we unify a empty row with an extend row
 *)
 let rec unification t1 t2 =
   if t1 == t2 then ()
@@ -552,6 +556,10 @@ let rec unification t1 t2 =
     | Type.RowEmpty, Type.RowEmpty -> ()
     | (Type.RowExtend _ as row1), (Type.RowExtend _ as row2) ->
       unification_rows row1 row2
+
+    | Type.RowEmpty, Type.RowExtend (map, _)
+    | Type.RowExtend (map, _), Type.RowEmpty ->
+      raise (No_label (Type.Set.choose map |> fst))
 
     | Type.Alias (_, ty1), ty2 -> unification ty1 ty2
     | ty1, Type.Alias (_, ty2) -> unification ty1 ty2
